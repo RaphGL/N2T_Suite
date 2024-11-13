@@ -1,4 +1,4 @@
-#include "lexer.hpp"
+#include "hdl/lexer.hpp"
 #include <iostream>
 
 int main() {
