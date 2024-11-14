@@ -22,6 +22,11 @@ _deps
 CMakeUserPresets.json
 .cmake
 
+# Ninja
+.ninja_deps
+.ninja_log
+build.ninja
+
 # Precompiled Headers
 *.gch
 *.pch

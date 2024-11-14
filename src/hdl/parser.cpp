@@ -37,18 +37,6 @@ std::optional<Token> Parser::eat() {
   return std::nullopt;
 }
 
-void Parser::uneat() {
-  if (m_idx > 0) {
-    --m_idx;
-  }
-}
-
-// chip = "CHIP" ident "{" (inout)* "PARTS:" (part)* "}"
-// ident = A-z | 0-9 | "_"
-// inout = ("IN" | "OUT") (ident ("[" 0-9* "]")?),* ";"
-// part = ident "("(arg),* ")";
-// arg = ident (range)? "=" ident
-// range = "[" (0-9)* ".." (0-9)* "]"
 std::optional<Range> Parser::parse_range() {
   if (!this->peek_expected(TokenType::OpenBracket)) {
     m_errors.push_back(
