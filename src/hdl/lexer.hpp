@@ -2,6 +2,7 @@
 #define HDL_LEXER_H
 
 #include <fstream>
+#include <variant>
 #include <vector>
 
 namespace hdl {
@@ -22,17 +23,15 @@ enum class TokenType {
   CloseBrace,
   OpenParen,
   CloseParen,
+  OpenBracket,
+  CloseBracket,
 };
 
 struct Token {
   TokenType type;
   TokenCoordinate start_coord, end_coord;
-  std::string ident;
 
-  union {
-    const std::size_t number;
-    const int symbol;
-  };
+  std::variant<std::string, std::size_t, int> value;
 
   // creates a Number token
   explicit Token(std::size_t n, TokenCoordinate start, TokenCoordinate end);

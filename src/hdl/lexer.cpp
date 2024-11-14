@@ -8,38 +8,42 @@
 namespace hdl {
 
 Token::Token(std::size_t n, TokenCoordinate start, TokenCoordinate end)
-    : type{TokenType::Number}, start_coord{start}, end_coord{end}, number{n} {}
+    : type{TokenType::Number}, start_coord{start}, end_coord{end}, value{n} {}
 Token::Token(int s, TokenType tt, TokenCoordinate start, TokenCoordinate end)
-    : type{tt}, start_coord{start}, end_coord{end}, symbol{s} {}
+    : type{tt}, start_coord{start}, end_coord{end}, value{s} {}
 Token::Token(std::string id, TokenType tt, TokenCoordinate start,
              TokenCoordinate end)
-    : type{tt}, start_coord{start}, end_coord{end}, ident{id} {}
+    : type{tt}, start_coord{start}, end_coord{end}, value{id} {}
 
 std::string Token::string() {
   switch (type) {
   case TokenType::OpenBrace:
-    return std::format("{{{}, {}}}", "OpenBrace", symbol);
+    return std::format("{{{}, {}}}", "OpenBrace", std::get<int>(value));
   case TokenType::CloseBrace:
-    return std::format("{{{}, {}}}", "CloseBrace", symbol);
+    return std::format("{{{}, {}}}", "CloseBrace", std::get<int>(value));
+  case TokenType::OpenBracket:
+    return std::format("{{{}, {}}}", "OpenBracket", std::get<int>(value));
+  case TokenType::CloseBracket:
+    return std::format("{{{}, {}}}", "CloseBracket", std::get<int>(value));
   case TokenType::Semicolon:
-    return std::format("{{{}, {}}}", "Semicolon", symbol);
+    return std::format("{{{}, {}}}", "Semicolon", std::get<int>(value));
   case TokenType::Colon:
-    return std::format("{{{}, {}}}", "Colon", symbol);
+    return std::format("{{{}, {}}}", "Colon", std::get<int>(value));
   case TokenType::Comma:
-    return std::format("{{{}, {}}}", "Comma", symbol);
+    return std::format("{{{}, {}}}", "Comma", std::get<int>(value));
   case TokenType::Equal:
-    return std::format("{{{}, {}}}", "Equal", symbol);
+    return std::format("{{{}, {}}}", "Equal", std::get<int>(value));
   case TokenType::OpenParen:
-    return std::format("{{{}, {}}}", "OpenParen", symbol);
+    return std::format("{{{}, {}}}", "OpenParen", std::get<int>(value));
   case TokenType::CloseParen:
-    return std::format("{{{}, {}}}", "CloseParen", symbol);
+    return std::format("{{{}, {}}}", "CloseParen", std::get<int>(value));
 
   case TokenType::Ident:
-    return std::format("{{{}, {}}}", "Ident", ident);
+    return std::format("{{{}, {}}}", "Ident", std::get<std::string>(value));
   case TokenType::Number:
-    return std::format("{{{}, {}}}", "Number", number);
+    return std::format("{{{}, {}}}", "Number", std::get<std::size_t>(value));
   case TokenType::RangeOp:
-    return std::format("{{{}, {}}}", "RangeOp", ident);
+    return std::format("{{{}, {}}}", "RangeOp", std::get<std::string>(value));
 
   default:
     return "invalid token";
@@ -49,8 +53,8 @@ std::string Token::string() {
 Lexer::Lexer(const char *file_path) : m_hdl_file(file_path) {}
 Token Lexer::lex_number() {
   TokenCoordinate start{
-      .row = m_curr_x,
-      .col = m_curr_y,
+      .row = m_curr_y,
+      .col = m_curr_x,
   };
 
   std::string numstr{};
@@ -62,8 +66,8 @@ Token Lexer::lex_number() {
   }
 
   TokenCoordinate end{
-      .row = m_curr_x + numstr.length(),
-      .col = m_curr_y,
+      .row = m_curr_y + numstr.length(),
+      .col = m_curr_x,
   };
 
   int num{std::stoi(numstr)};
@@ -73,8 +77,8 @@ Token Lexer::lex_number() {
 
 Token Lexer::lex_ident() {
   TokenCoordinate start{
-      .row = m_curr_x,
-      .col = m_curr_y,
+      .row = m_curr_y,
+      .col = m_curr_x,
   };
 
   std::string ident{};
@@ -91,8 +95,8 @@ Token Lexer::lex_ident() {
   }
 
   TokenCoordinate end{
-      .row = m_curr_x + ident.length(),
-      .col = m_curr_y,
+      .row = m_curr_y + ident.length(),
+      .col = m_curr_x,
   };
   return Token(ident, TokenType::Ident, start, end);
 }
@@ -109,8 +113,8 @@ std::vector<Token> Lexer::tokenize() {
     }
 
     TokenCoordinate coord{
-        .row = m_curr_x,
-        .col = m_curr_y,
+        .row = m_curr_y,
+        .col = m_curr_x,
     };
 
     if (ch == '{') {
@@ -137,14 +141,20 @@ std::vector<Token> Lexer::tokenize() {
     } else if (ch == ')') {
       Token tok{ch, TokenType::CloseParen, coord, coord};
       m_tokens.push_back(tok);
+    } else if (ch == '[') {
+      Token tok{ch, TokenType::OpenBracket, coord, coord};
+      m_tokens.push_back(tok);
+    } else if (ch == ']') {
+      Token tok{ch, TokenType::CloseBracket, coord, coord};
+      m_tokens.push_back(tok);
     } else if (ch == '.') {
       if (m_hdl_file.peek() != '.') {
         continue;
       }
       (void)m_hdl_file.get();
       TokenCoordinate coord2{
-          .row = m_curr_x,
-          .col = m_curr_y,
+          .row = m_curr_y,
+          .col = m_curr_x,
       };
 
       Token tok{"..", TokenType::RangeOp, coord, coord2};
