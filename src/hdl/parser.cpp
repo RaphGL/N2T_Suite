@@ -1,66 +1,13 @@
+#include "parser.hpp"
 #include "lexer.hpp"
 #include <format>
+#include <iostream>
 #include <optional>
-#include <unordered_set>
 #include <vector>
 
 namespace hdl {
 
-static std::unordered_set<std::string_view> g_keywords{
-    {"CHIP", "IN", "OUT", "PART"}};
-
-struct Range {
-  std::size_t from, to;
-};
-
-struct Arg {
-  std::string argname;
-  Range range;
-  std::string output;
-};
-
-struct Part {
-  std::string name;
-  std::vector<Arg> args;
-};
-
-struct InOut {
-  // output if false
-  bool input;
-  std::string name;
-  std::size_t size;
-};
-
-struct Chip {
-  std::string name;
-  std::vector<Part> parts;
-  std::vector<InOut> inouts;
-};
-
-class Parser {
-  std::vector<Token> m_tokens;
-  std::size_t m_idx;
-  std::vector<std::string> m_errors;
-
-  bool eof();
-
-  bool peek_expected(TokenType tt);
-  Token peek();
-  std::optional<Token> eat();
-  void uneat();
-
-  std::optional<Chip> parse_chip();
-  std::optional<std::vector<InOut>> parse_inout();
-  std::optional<Part> parse_part();
-  Arg parse_arg();
-  Range parse_range();
-
-public:
-  explicit Parser(std::vector<Token> tokens);
-  void parse();
-};
-
-Parser::Parser(std::vector<Token> tokens) : m_tokens{tokens} {}
+Parser::Parser(std::vector<Token> tokens) : m_tokens{tokens}, m_idx{0} {}
 
 bool Parser::peek_expected(TokenType tt) {
   std::size_t next_idx = m_idx + 1;
@@ -101,13 +48,127 @@ void Parser::uneat() {
 // inout = ("IN" | "OUT") (ident ("[" 0-9* "]")?),* ";"
 // part = ident "("(arg),* ")";
 // arg = ident (range)? "=" ident
-// range = (0-9)* ".." (0-9)*
+// range = "[" (0-9)* ".." (0-9)* "]"
+std::optional<Range> Parser::parse_range() {
+  if (!this->peek_expected(TokenType::OpenBracket)) {
+    m_errors.push_back(
+        std::format("expected `[` found {}", m_tokens.at(m_idx).string()));
+    return std::nullopt;
+  }
+  this->eat();
+
+  if (!this->peek_expected(TokenType::Number)) {
+    m_errors.push_back(
+        std::format("expected a number found {}", m_tokens.at(m_idx).string()));
+    return std::nullopt;
+  }
+
+  Range range{};
+  range.from = std::get<std::size_t>(this->eat().value().value);
+
+  if (!this->peek_expected(TokenType::RangeOp)) {
+    m_errors.push_back(std::format("expected `..` number found {}",
+                                   m_tokens.at(m_idx).string()));
+    return std::nullopt;
+  }
+  this->eat();
+
+  if (!this->peek_expected(TokenType::Number)) {
+    m_errors.push_back(
+        std::format("expected a number found {}", m_tokens.at(m_idx).string()));
+    return std::nullopt;
+  }
+  range.to = std::get<std::size_t>(this->eat().value().value);
+
+  if (!this->peek_expected(TokenType::CloseBracket)) {
+    m_errors.push_back(
+        std::format("expected `]` found {}", m_tokens.at(m_idx).string()));
+    return std::nullopt;
+  }
+  this->eat();
+
+  return range;
+}
+
+std::optional<Arg> Parser::parse_arg() {
+  if (!this->peek_expected(TokenType::Ident)) {
+    m_errors.push_back(std::format("expected identifier found {}",
+                                   m_tokens.at(m_idx).string()));
+    return std::nullopt;
+  }
+  Arg arg{};
+  arg.name = std::get<std::string>(this->eat().value().value);
+
+  if (this->peek_expected(TokenType::OpenBracket)) {
+    arg.range = this->parse_range();
+  } else {
+    arg.range = std::nullopt;
+  }
+
+  if (!this->peek_expected(TokenType::Equal)) {
+    m_errors.push_back(
+        std::format("expected `=` found {}", m_tokens.at(m_idx).string()));
+    return std::nullopt;
+  }
+  this->eat();
+
+  if (!this->peek_expected(TokenType::Ident)) {
+    m_errors.push_back(std::format("expected identifier found {}",
+                                   m_tokens.at(m_idx).string()));
+    return std::nullopt;
+  }
+  arg.output = std::get<std::string>(this->eat().value().value);
+
+  return arg;
+}
+
 std::optional<Part> Parser::parse_part() {
-  
+  if (!this->peek_expected(TokenType::Ident)) {
+    m_errors.push_back(std::format("expected identifier found {}",
+                                   m_tokens.at(m_idx).string()));
+    return std::nullopt;
+  }
+
+  Part part{};
+  part.name = std::get<std::string>(this->eat().value().value);
+
+  if (!this->peek_expected(TokenType::OpenParen)) {
+    m_errors.push_back(
+        std::format("expected `(` found {}", m_tokens.at(m_idx).string()));
+    return std::nullopt;
+  }
+  this->eat();
+
+  while (!this->peek_expected(TokenType::CloseParen)) {
+    auto arg = this->parse_arg();
+    if (arg.has_value()) {
+      part.args.push_back(arg.value());
+    }
+
+    if (!this->peek_expected(TokenType::Comma)) {
+      break;
+    }
+    this->eat();
+  }
+
+  if (!this->peek_expected(TokenType::CloseParen)) {
+    m_errors.push_back(
+        std::format("expected `)` found {}", m_tokens.at(m_idx).string()));
+    return std::nullopt;
+  }
+  this->eat();
+
+  if (!this->peek_expected(TokenType::Semicolon)) {
+    m_errors.push_back(
+        std::format("expected `;` found {}", m_tokens.at(m_idx).string()));
+    return std::nullopt;
+  }
+  this->eat();
+
+  return part;
 }
 
 std::optional<std::vector<InOut>> Parser::parse_inout() {
-  this->uneat();
   if (!this->peek_expected(TokenType::Ident)) {
     m_errors.push_back(std::format("expected identifier found {}",
                                    m_tokens.at(m_idx).string()));
@@ -127,7 +188,7 @@ std::optional<std::vector<InOut>> Parser::parse_inout() {
   }
 
   std::vector<InOut> ports;
-  while (!this->eof() && this->peek().type == TokenType::Semicolon) {
+  while (!this->eof() && this->peek().type != TokenType::Semicolon) {
     if (!this->peek_expected(TokenType::Ident)) {
       m_errors.push_back(std::format("expected identifier found {}",
                                      m_tokens.at(m_idx).string()));
@@ -161,7 +222,15 @@ std::optional<std::vector<InOut>> Parser::parse_inout() {
     if (!this->peek_expected(TokenType::Comma)) {
       break;
     }
+    this->eat();
   }
+
+  if (!this->peek_expected(TokenType::Semicolon)) {
+    m_errors.push_back(
+        std::format("expected a `;` found {}", m_tokens.at(m_idx).string()));
+    return std::nullopt;
+  }
+  this->eat();
 
   return ports;
 }
@@ -204,14 +273,13 @@ std::optional<Chip> Parser::parse_chip() {
                                    m_tokens.at(m_idx).string()));
     return std::nullopt;
   }
-  curr_token = this->eat().value();
 
+  curr_token = this->eat().value();
   if (std::get<std::string>(curr_token.value) != "PARTS") {
     m_errors.push_back(
         std::format("expected `PARTS` found {}", m_tokens.at(m_idx).string()));
     return std::nullopt;
   }
-  this->eat();
 
   if (!this->peek_expected(TokenType::Colon)) {
     m_errors.push_back(
@@ -220,11 +288,11 @@ std::optional<Chip> Parser::parse_chip() {
   }
   this->eat();
 
-  curr_token = this->peek();
-  while (!this->eof() && curr_token.type != TokenType::CloseBrace) {
+  while (!this->eof() && this->peek().type != TokenType::CloseBrace) {
     auto part = this->parse_part();
-    chip.parts.push_back(part);
-    curr_token = this->peek();
+    if (part.has_value()) {
+      chip.parts.push_back(part.value());
+    }
   }
 
   if (!this->peek_expected(TokenType::CloseBrace)) {
@@ -232,20 +300,73 @@ std::optional<Chip> Parser::parse_chip() {
         std::format("expected `}}` found {}", m_tokens.at(m_idx).string()));
     return std::nullopt;
   }
+  this->eat();
 
   return chip;
 }
 
-void Parser::parse() {
-
-  Token token{m_tokens.at(0)};
+std::optional<std::vector<Chip>> Parser::parse() {
+  std::vector<Chip> chips{};
   while (!this->eof()) {
+    Token token{m_tokens.at(m_idx)};
+    if (token.type != TokenType::Ident) {
+      // print error
+      break;
+    }
+
     if (std::get<std::string>(token.value) == "CHIP") {
-      this->parse_chip();
+      auto chip = this->parse_chip();
+      if (chip.has_value()) {
+        chips.push_back(chip.value());
+      }
     } else {
       // make an error as the global parser should only be in charge of calling
       // parse_chip and putting everything together
     }
+  }
+
+  if (!m_errors.empty()) {
+    for (auto &error : m_errors) {
+      std::cerr << error << '\n';
+    }
+
+    return std::nullopt;
+  }
+
+  return chips;
+}
+
+namespace {
+std::string get_inout_string(const std::vector<InOut> &inouts) {
+  std::string res{};
+  for (const auto &inout : inouts) {
+    res += std::format("\t{} {}[{}];\n", inout.input ? "IN" : "OUT", inout.name,
+                       inout.size);
+  }
+
+  return res;
+}
+
+std::string get_parts_string(const std::vector<Part> &parts) {
+  std::string res{};
+  for (const auto &part : parts) {
+    std::string args{};
+    for (const auto &arg : part.args) {
+      args += std::format("{}={},", arg.name, arg.output);
+    }
+    res += std::format("\t{}({});\n", part.name, args);
+  }
+
+  return res;
+}
+
+} // namespace
+
+void print_ast(std::vector<Chip> ast) {
+  for (const auto &chip : ast) {
+    std::cout << std::format("CHIP {} {{\n {}\n PARTS:\n {}\n}}", chip.name,
+                             get_inout_string(chip.inouts),
+                             get_parts_string(chip.parts));
   }
 }
 
