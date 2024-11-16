@@ -18,32 +18,32 @@ Token::Token(std::string id, TokenType tt, TokenCoordinate start,
 std::string Token::string() {
   switch (type) {
   case TokenType::OpenBrace:
-    return std::format("{{{}, {}}}", "OpenBrace", std::get<int>(value));
+    return "{";
   case TokenType::CloseBrace:
-    return std::format("{{{}, {}}}", "CloseBrace", std::get<int>(value));
+    return "}";
   case TokenType::OpenBracket:
-    return std::format("{{{}, {}}}", "OpenBracket", std::get<int>(value));
+    return "[";
   case TokenType::CloseBracket:
-    return std::format("{{{}, {}}}", "CloseBracket", std::get<int>(value));
+    return "]";
   case TokenType::Semicolon:
-    return std::format("{{{}, {}}}", "Semicolon", std::get<int>(value));
+    return ";";
   case TokenType::Colon:
-    return std::format("{{{}, {}}}", "Colon", std::get<int>(value));
+    return ":";
   case TokenType::Comma:
-    return std::format("{{{}, {}}}", "Comma", std::get<int>(value));
+    return ",";
   case TokenType::Equal:
-    return std::format("{{{}, {}}}", "Equal", std::get<int>(value));
+    return "=";
   case TokenType::OpenParen:
-    return std::format("{{{}, {}}}", "OpenParen", std::get<int>(value));
+    return "(";
   case TokenType::CloseParen:
-    return std::format("{{{}, {}}}", "CloseParen", std::get<int>(value));
+    return ")";
+  case TokenType::RangeOp:
+    return "..";
 
   case TokenType::Ident:
-    return std::format("{{{}, {}}}", "Ident", std::get<std::string>(value));
+    return std::get<std::string>(value);
   case TokenType::Number:
-    return std::format("{{{}, {}}}", "Number", std::get<std::size_t>(value));
-  case TokenType::RangeOp:
-    return std::format("{{{}, {}}}", "RangeOp", std::get<std::string>(value));
+    return std::to_string(std::get<std::size_t>(value));
 
   default:
     return std::format("invalid token found at {}:{}", start_coord.row,
@@ -67,8 +67,8 @@ Token Lexer::lex_number() {
   }
 
   TokenCoordinate end{
-      .row = m_curr_y + numstr.length(),
-      .col = m_curr_x,
+      .row = m_curr_y,
+      .col = m_curr_x + numstr.length(),
   };
 
   int num{std::stoi(numstr)};
@@ -96,8 +96,8 @@ Token Lexer::lex_ident() {
   }
 
   TokenCoordinate end{
-      .row = m_curr_y + ident.length(),
-      .col = m_curr_x,
+      .row = m_curr_y,
+      .col = m_curr_x + ident.length(),
   };
   return Token(ident, TokenType::Ident, start, end);
 }
@@ -105,11 +105,14 @@ Token Lexer::lex_ident() {
 std::vector<Token> Lexer::tokenize() {
   m_hdl_file.peek();
   while (!m_hdl_file.eof()) {
+    m_curr_x++;
     auto ch = m_hdl_file.get();
 
     if (std::isspace(ch)) {
-      ++m_curr_y;
-      m_curr_x = 0;
+      if (ch == '\n') {
+        ++m_curr_y;
+        m_curr_x = 0;
+      }
       continue;
     }
 
@@ -167,8 +170,6 @@ std::vector<Token> Lexer::tokenize() {
       auto ident = this->lex_ident();
       m_tokens.push_back(ident);
     }
-
-    ++m_curr_x;
   }
 
   return m_tokens;

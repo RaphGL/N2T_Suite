@@ -5,7 +5,6 @@
 #include "lexer.hpp"
 #include <optional>
 #include <string>
-#include <variant>
 #include <vector>
 
 namespace hdl {
@@ -63,7 +62,7 @@ public:
   std::optional<std::vector<Chip>> parse();
   std::string get_error_report();
 };
-void print_ast(std::vector<Chip> ast);
+
 } // namespace hdl
 
 #endif

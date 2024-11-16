@@ -36,22 +36,26 @@ std::string generate_individual_report(std::string_view line, Report report) {
     break;
   }
 
+  std::size_t error_line_len = error_type_str.length() + report.error.length();
   std::string report_str{error_type_str};
   report_str += std::string(line) + "\n";
 
   std::string left_padding{};
-  left_padding.insert(0, error_type_str.length() + report.start_col, ' ');
+  auto aligned_padding_len =
+      error_type_str.length() + report.start_col;
+  left_padding.insert(0, aligned_padding_len, ' ');
   report_str += left_padding + '^' + '\n';
 
   left_padding = std::string();
-  auto aligned_padding_len =
-      error_type_str.length() + report.start_col - report.error.length() / 2;
-  if (aligned_padding_len > report.error.length()) {
-    aligned_padding_len = 0;
+  aligned_padding_len -= report.error.length() / 2;
+  if (aligned_padding_len > error_line_len) {
+    aligned_padding_len = error_type_str.length();
   }
 
   left_padding.insert(0, aligned_padding_len, ' ');
   report_str += left_padding + report.error + "\n\n";
+
+  std::replace(report_str.begin(), report_str.end(), '\t', ' ');
   return report_str;
 }
 

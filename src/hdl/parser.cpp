@@ -291,8 +291,6 @@ std::optional<Chip> Parser::parse_chip() {
       for (const auto &port : inout.value()) {
         chip.inouts.push_back(port);
       }
-    } else {
-      break;
     }
     curr_token = this->peek();
   }
@@ -324,6 +322,8 @@ std::optional<Chip> Parser::parse_chip() {
     auto part = this->parse_part();
     if (part.has_value()) {
       chip.parts.push_back(part.value());
+    } else {
+      break;
     }
   }
 
@@ -369,37 +369,4 @@ std::optional<std::vector<Chip>> Parser::parse() {
   return chips;
 }
 
-namespace {
-std::string get_inout_string(const std::vector<InOut> &inouts) {
-  std::string res{};
-  for (const auto &inout : inouts) {
-    res += std::format("\t{} {}[{}];\n", inout.input ? "IN" : "OUT", inout.name,
-                       inout.size);
-  }
-
-  return res;
-}
-
-std::string get_parts_string(const std::vector<Part> &parts) {
-  std::string res{};
-  for (const auto &part : parts) {
-    std::string args{};
-    for (const auto &arg : part.args) {
-      args += std::format("{}={},", arg.name, arg.output);
-    }
-    res += std::format("\t{}({});\n", part.name, args);
-  }
-
-  return res;
-}
-
-} // namespace
-
-void print_ast(std::vector<Chip> ast) {
-  for (const auto &chip : ast) {
-    std::cout << std::format("CHIP {} {{\n {}\n PARTS:\n {}\n}}", chip.name,
-                             get_inout_string(chip.inouts),
-                             get_parts_string(chip.parts));
-  }
-}
 }; // namespace hdl
