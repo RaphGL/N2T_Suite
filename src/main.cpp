@@ -9,11 +9,11 @@ int main() {
     std::cout << token.string() << '\n';
   }
 
-  hdl::Parser parser{tokens};
+  hdl::Parser parser{tokens, "test.hdl"};
   auto ast = parser.parse();
   if (!ast.has_value()) {
-    std::cout << "erroneous ast\n";
-    return 0;
+    std::cerr << parser.get_error_report();
+    return 1;
   }
 
   hdl::print_ast(ast.value());

@@ -46,7 +46,8 @@ std::string Token::string() {
     return std::format("{{{}, {}}}", "RangeOp", std::get<std::string>(value));
 
   default:
-    return "invalid token";
+    return std::format("invalid token found at {}:{}", start_coord.row,
+                       start_coord.col);
   }
 }
 

@@ -1,10 +1,12 @@
 #ifndef HDL_PARSER_H
 #define HDL_PARSER_H
 
+#include "../report/report.hpp"
 #include "lexer.hpp"
 #include <optional>
-#include <vector>
 #include <string>
+#include <variant>
+#include <vector>
 
 namespace hdl {
 
@@ -38,11 +40,11 @@ struct Chip {
 
 class Parser {
   std::vector<Token> m_tokens;
-  std::size_t m_idx;
-  std::vector<std::string> m_errors;
+  std::size_t m_idx{0};
+  std::string m_error_report{""};
+  report::Context m_reporter;
 
   bool eof();
-
   bool peek_expected(TokenType tt);
   Token peek();
   std::optional<Token> eat();
@@ -54,9 +56,12 @@ class Parser {
   std::optional<Arg> parse_arg();
   std::optional<Range> parse_range();
 
+  void emit_error(const Token &tok, std::string_view error);
+
 public:
-  explicit Parser(std::vector<Token> tokens);
+  explicit Parser(std::vector<Token> tokens, const char *filepath);
   std::optional<std::vector<Chip>> parse();
+  std::string get_error_report();
 };
 void print_ast(std::vector<Chip> ast);
 } // namespace hdl

@@ -5,9 +5,14 @@
 #include <optional>
 #include <vector>
 
+using report::ReportType;
+
 namespace hdl {
 
-Parser::Parser(std::vector<Token> tokens) : m_tokens{tokens}, m_idx{0} {}
+Parser::Parser(std::vector<Token> tokens, const char *filepath)
+    : m_tokens{tokens}, m_reporter{filepath} {}
+
+std::string Parser::get_error_report() { return m_error_report; }
 
 bool Parser::peek_expected(TokenType tt) {
   std::size_t next_idx = m_idx + 1;
@@ -37,17 +42,33 @@ std::optional<Token> Parser::eat() {
   return std::nullopt;
 }
 
+void Parser::emit_error(const Token &tok, std::string_view error) {
+  report::Coord coord_start{
+      .col = tok.start_coord.col,
+      .row = tok.start_coord.row,
+  };
+
+  report::Coord coord_end{
+      .col = tok.end_coord.col,
+      .row = tok.end_coord.row,
+  };
+
+  m_reporter.create_report(ReportType::Error, coord_start, coord_end, error);
+}
+
 std::optional<Range> Parser::parse_range() {
   if (!this->peek_expected(TokenType::OpenBracket)) {
-    m_errors.push_back(
-        std::format("expected `[` found {}", m_tokens.at(m_idx).string()));
+    auto token = m_tokens.at(m_idx);
+    this->emit_error(token, std::format("expected `[` found {}",
+                                        m_tokens.at(m_idx).string()));
     return std::nullopt;
   }
   this->eat();
 
   if (!this->peek_expected(TokenType::Number)) {
-    m_errors.push_back(
-        std::format("expected a number found {}", m_tokens.at(m_idx).string()));
+    auto token = m_tokens.at(m_idx);
+    this->emit_error(token, std::format("expected a number found {}",
+                                        m_tokens.at(m_idx).string()));
     return std::nullopt;
   }
 
@@ -55,22 +76,25 @@ std::optional<Range> Parser::parse_range() {
   range.from = std::get<std::size_t>(this->eat().value().value);
 
   if (!this->peek_expected(TokenType::RangeOp)) {
-    m_errors.push_back(std::format("expected `..` number found {}",
-                                   m_tokens.at(m_idx).string()));
+    auto token = m_tokens.at(m_idx);
+    this->emit_error(token, std::format("expected `..` number found {}",
+                                        m_tokens.at(m_idx).string()));
     return std::nullopt;
   }
   this->eat();
 
   if (!this->peek_expected(TokenType::Number)) {
-    m_errors.push_back(
-        std::format("expected a number found {}", m_tokens.at(m_idx).string()));
+    auto token = m_tokens.at(m_idx);
+    this->emit_error(token, std::format("expected `..` number found {}",
+                                        m_tokens.at(m_idx).string()));
     return std::nullopt;
   }
   range.to = std::get<std::size_t>(this->eat().value().value);
 
   if (!this->peek_expected(TokenType::CloseBracket)) {
-    m_errors.push_back(
-        std::format("expected `]` found {}", m_tokens.at(m_idx).string()));
+    auto token = m_tokens.at(m_idx);
+    this->emit_error(token, std::format("expected `]` found {}",
+                                        m_tokens.at(m_idx).string()));
     return std::nullopt;
   }
   this->eat();
@@ -80,8 +104,9 @@ std::optional<Range> Parser::parse_range() {
 
 std::optional<Arg> Parser::parse_arg() {
   if (!this->peek_expected(TokenType::Ident)) {
-    m_errors.push_back(std::format("expected identifier found {}",
-                                   m_tokens.at(m_idx).string()));
+    auto token = m_tokens.at(m_idx);
+    this->emit_error(token, std::format("expected identifier found {}",
+                                        m_tokens.at(m_idx).string()));
     return std::nullopt;
   }
   Arg arg{};
@@ -94,15 +119,17 @@ std::optional<Arg> Parser::parse_arg() {
   }
 
   if (!this->peek_expected(TokenType::Equal)) {
-    m_errors.push_back(
-        std::format("expected `=` found {}", m_tokens.at(m_idx).string()));
+    auto token = m_tokens.at(m_idx);
+    this->emit_error(token, std::format("expected `=` found {}",
+                                        m_tokens.at(m_idx).string()));
     return std::nullopt;
   }
   this->eat();
 
   if (!this->peek_expected(TokenType::Ident)) {
-    m_errors.push_back(std::format("expected identifier found {}",
-                                   m_tokens.at(m_idx).string()));
+    auto token = m_tokens.at(m_idx);
+    this->emit_error(token, std::format("expected identifier found {}",
+                                        m_tokens.at(m_idx).string()));
     return std::nullopt;
   }
   arg.output = std::get<std::string>(this->eat().value().value);
@@ -112,8 +139,9 @@ std::optional<Arg> Parser::parse_arg() {
 
 std::optional<Part> Parser::parse_part() {
   if (!this->peek_expected(TokenType::Ident)) {
-    m_errors.push_back(std::format("expected identifier found {}",
-                                   m_tokens.at(m_idx).string()));
+    auto token = m_tokens.at(m_idx);
+    this->emit_error(token, std::format("expected identifier found {}",
+                                        m_tokens.at(m_idx).string()));
     return std::nullopt;
   }
 
@@ -121,8 +149,9 @@ std::optional<Part> Parser::parse_part() {
   part.name = std::get<std::string>(this->eat().value().value);
 
   if (!this->peek_expected(TokenType::OpenParen)) {
-    m_errors.push_back(
-        std::format("expected `(` found {}", m_tokens.at(m_idx).string()));
+    auto token = m_tokens.at(m_idx);
+    this->emit_error(token, std::format("expected `(` found {}",
+                                        m_tokens.at(m_idx).string()));
     return std::nullopt;
   }
   this->eat();
@@ -140,15 +169,17 @@ std::optional<Part> Parser::parse_part() {
   }
 
   if (!this->peek_expected(TokenType::CloseParen)) {
-    m_errors.push_back(
-        std::format("expected `)` found {}", m_tokens.at(m_idx).string()));
+    auto token = m_tokens.at(m_idx);
+    this->emit_error(token, std::format("expected `)` found {}",
+                                        m_tokens.at(m_idx).string()));
     return std::nullopt;
   }
   this->eat();
 
   if (!this->peek_expected(TokenType::Semicolon)) {
-    m_errors.push_back(
-        std::format("expected `;` found {}", m_tokens.at(m_idx).string()));
+    auto token = m_tokens.at(m_idx);
+    this->emit_error(token, std::format("expected `;` found {}",
+                                        m_tokens.at(m_idx).string()));
     return std::nullopt;
   }
   this->eat();
@@ -158,8 +189,9 @@ std::optional<Part> Parser::parse_part() {
 
 std::optional<std::vector<InOut>> Parser::parse_inout() {
   if (!this->peek_expected(TokenType::Ident)) {
-    m_errors.push_back(std::format("expected identifier found {}",
-                                   m_tokens.at(m_idx).string()));
+    auto token = m_tokens.at(m_idx);
+    this->emit_error(token, std::format("expected identifier found {}",
+                                        m_tokens.at(m_idx).string()));
     return std::nullopt;
   }
 
@@ -170,16 +202,18 @@ std::optional<std::vector<InOut>> Parser::parse_inout() {
   } else if (keyword == "OUT") {
     inout.input = false;
   } else {
-    m_errors.push_back(std::format("expected `in` or `out` found {}",
-                                   m_tokens.at(m_idx).string()));
+    auto token = m_tokens.at(m_idx);
+    this->emit_error(token, std::format("expected `in` or `out` found {}",
+                                        m_tokens.at(m_idx).string()));
     return std::nullopt;
   }
 
   std::vector<InOut> ports;
   while (!this->eof() && this->peek().type != TokenType::Semicolon) {
     if (!this->peek_expected(TokenType::Ident)) {
-      m_errors.push_back(std::format("expected identifier found {}",
-                                     m_tokens.at(m_idx).string()));
+      auto token = m_tokens.at(m_idx);
+      this->emit_error(token, std::format("expected identifier found {}",
+                                          m_tokens.at(m_idx).string()));
       return std::nullopt;
     }
 
@@ -191,15 +225,17 @@ std::optional<std::vector<InOut>> Parser::parse_inout() {
       this->eat();
 
       if (!this->peek_expected(TokenType::Number)) {
-        m_errors.push_back(std::format("expected a number found {}",
-                                       m_tokens.at(m_idx).string()));
+        auto token = m_tokens.at(m_idx);
+        this->emit_error(token, std::format("expected a number found {}",
+                                            m_tokens.at(m_idx).string()));
         return std::nullopt;
       }
       port.size = std::get<std::size_t>(this->eat().value().value);
 
       if (!this->peek_expected(TokenType::CloseBracket)) {
-        m_errors.push_back(std::format("expected a `}}` found {}",
-                                       m_tokens.at(m_idx).string()));
+        auto token = m_tokens.at(m_idx);
+        this->emit_error(token, std::format("expected a `}}` found {}",
+                                            m_tokens.at(m_idx).string()));
         return std::nullopt;
       }
       this->eat();
@@ -214,8 +250,9 @@ std::optional<std::vector<InOut>> Parser::parse_inout() {
   }
 
   if (!this->peek_expected(TokenType::Semicolon)) {
-    m_errors.push_back(
-        std::format("expected a `;` found {}", m_tokens.at(m_idx).string()));
+    auto token = m_tokens.at(m_idx);
+    this->emit_error(token, std::format("expected a `;` found {}",
+                                        m_tokens.at(m_idx).string()));
     return std::nullopt;
   }
   this->eat();
@@ -227,8 +264,9 @@ std::optional<std::vector<InOut>> Parser::parse_inout() {
 std::optional<Chip> Parser::parse_chip() {
   Chip chip{};
   if (!this->peek_expected(TokenType::Ident)) {
-    m_errors.push_back(std::format("expected identifier found {}",
-                                   m_tokens.at(m_idx).string()));
+    auto token = m_tokens.at(m_idx);
+    this->emit_error(token, std::format("expected identifier found {}",
+                                        m_tokens.at(m_idx).string()));
     return std::nullopt;
   }
   auto curr_token = this->eat().value();
@@ -236,8 +274,9 @@ std::optional<Chip> Parser::parse_chip() {
   chip.name = std::get<std::string>(curr_token.value);
 
   if (!this->peek_expected(TokenType::OpenBrace)) {
-    m_errors.push_back(
-        std::format("expected `{{` found {}", m_tokens.at(m_idx).string()));
+    auto token = m_tokens.at(m_idx);
+    this->emit_error(token, std::format("expected `{{` found {}",
+                                        m_tokens.at(m_idx).string()));
     return std::nullopt;
   }
   this->eat();
@@ -252,26 +291,31 @@ std::optional<Chip> Parser::parse_chip() {
       for (const auto &port : inout.value()) {
         chip.inouts.push_back(port);
       }
+    } else {
+      break;
     }
     curr_token = this->peek();
   }
 
   if (!this->peek_expected(TokenType::Ident)) {
-    m_errors.push_back(std::format("expected identifier found {}",
-                                   m_tokens.at(m_idx).string()));
+    auto token = m_tokens.at(m_idx);
+    this->emit_error(token, std::format("expected identifier found {}",
+                                        m_tokens.at(m_idx).string()));
     return std::nullopt;
   }
 
   curr_token = this->eat().value();
   if (std::get<std::string>(curr_token.value) != "PARTS") {
-    m_errors.push_back(
-        std::format("expected `PARTS` found {}", m_tokens.at(m_idx).string()));
+    auto token = m_tokens.at(m_idx);
+    this->emit_error(token, std::format("expected `PARTS` found {}",
+                                        m_tokens.at(m_idx).string()));
     return std::nullopt;
   }
 
   if (!this->peek_expected(TokenType::Colon)) {
-    m_errors.push_back(
-        std::format("expected `:` found {}", m_tokens.at(m_idx).string()));
+    auto token = m_tokens.at(m_idx);
+    this->emit_error(token, std::format("expected `:` found {}",
+                                        m_tokens.at(m_idx).string()));
     return std::nullopt;
   }
   this->eat();
@@ -284,8 +328,9 @@ std::optional<Chip> Parser::parse_chip() {
   }
 
   if (!this->peek_expected(TokenType::CloseBrace)) {
-    m_errors.push_back(
-        std::format("expected `}}` found {}", m_tokens.at(m_idx).string()));
+    auto token = m_tokens.at(m_idx);
+    this->emit_error(token, std::format("expected `}}` found {}",
+                                        m_tokens.at(m_idx).string()));
     return std::nullopt;
   }
   this->eat();
@@ -298,7 +343,8 @@ std::optional<std::vector<Chip>> Parser::parse() {
   while (!this->eof()) {
     Token token{m_tokens.at(m_idx)};
     if (token.type != TokenType::Ident) {
-      // print error
+      this->emit_error(token, std::format("expected an identifier and found {}",
+                                          token.string()));
       break;
     }
 
@@ -308,16 +354,15 @@ std::optional<std::vector<Chip>> Parser::parse() {
         chips.push_back(chip.value());
       }
     } else {
-      // make an error as the global parser should only be in charge of calling
-      // parse_chip and putting everything together
+      this->emit_error(
+          token, std::format("expected `CHIP` and found {}", token.string()));
+      break;
     }
   }
 
-  if (!m_errors.empty()) {
-    for (auto &error : m_errors) {
-      std::cerr << error << '\n';
-    }
-
+  auto error_report = m_reporter.generate_final_report();
+  if (error_report.has_value()) {
+    m_error_report = error_report.value();
     return std::nullopt;
   }
 
@@ -357,5 +402,4 @@ void print_ast(std::vector<Chip> ast) {
                              get_parts_string(chip.parts));
   }
 }
-
 }; // namespace hdl
