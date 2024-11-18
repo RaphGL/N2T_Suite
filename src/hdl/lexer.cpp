@@ -105,10 +105,10 @@ Token Lexer::lex_ident() {
 std::vector<Token> Lexer::tokenize() {
   m_hdl_file.peek();
   while (!m_hdl_file.eof()) {
-    m_curr_x++;
     auto ch = m_hdl_file.get();
 
     if (std::isspace(ch)) {
+      ++m_curr_x;
       if (ch == '\n') {
         ++m_curr_y;
         m_curr_x = 0;
@@ -156,6 +156,8 @@ std::vector<Token> Lexer::tokenize() {
         continue;
       }
       (void)m_hdl_file.get();
+      ++m_curr_x;
+
       TokenCoordinate coord2{
           .row = m_curr_y,
           .col = m_curr_x,
@@ -170,6 +172,7 @@ std::vector<Token> Lexer::tokenize() {
       auto ident = this->lex_ident();
       m_tokens.push_back(ident);
     }
+    ++m_curr_x;
   }
 
   return m_tokens;

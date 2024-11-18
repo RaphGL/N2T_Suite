@@ -23,8 +23,8 @@ void Context::create_report(ReportType type, Coord start, Coord end,
 }
 
 std::string generate_individual_report(std::string_view line, Report report) {
-  constexpr std::string_view error_str = "Error: ";
-  constexpr std::string_view warning_str = "Warning: ";
+  constexpr std::string_view error_str = "error: ";
+  constexpr std::string_view warning_str = "warning: ";
 
   std::string_view error_type_str;
   switch (report.type) {
