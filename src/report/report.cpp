@@ -37,8 +37,11 @@ std::string generate_individual_report(std::string_view line, Report report) {
     break;
   }
 
-  std::string report_str = std::format(
-      "--> {} {}:{}\n", error_type_str, report.start_row + 1, report.start_col + 1);
+  ++report.start_col;
+  ++report.start_row;
+
+  std::string report_str = std::format("--> {} {}:{}\n", error_type_str,
+                                       report.start_row, report.start_col);
   auto col = std::to_string(report.start_col);
   std::string tab_pad{};
   tab_pad.insert(0, 5 + col.length(), ' ');
@@ -48,13 +51,13 @@ std::string generate_individual_report(std::string_view line, Report report) {
 
   std::string left_padding{};
   auto aligned_padding_len = report.start_col;
-  left_padding.insert(0, aligned_padding_len + col.length(), ' ');
+  left_padding.insert(0, aligned_padding_len, ' ');
 
   report_str += tab_pad + left_padding + '^' + '\n';
 
   left_padding = std::string();
   aligned_padding_len = report.start_col - report.error.length() / 2;
-  if (aligned_padding_len >= report.error.length()) {
+  if (aligned_padding_len >= line.length()) {
     aligned_padding_len = 0;
   }
   left_padding.insert(0, aligned_padding_len + col.length(), ' ');

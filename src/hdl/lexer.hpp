@@ -51,7 +51,7 @@ class Lexer {
   std::vector<Token> m_tokens;
   Token lex_number();
   Token lex_ident();
-  std::size_t m_curr_x, m_curr_y;
+  std::size_t m_curr_x{0}, m_curr_y{0};
 
 public:
   explicit Lexer(const char *file_path);

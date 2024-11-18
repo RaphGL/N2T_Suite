@@ -172,6 +172,7 @@ std::vector<Token> Lexer::tokenize() {
       auto ident = this->lex_ident();
       m_tokens.push_back(ident);
     }
+
     ++m_curr_x;
   }
 
