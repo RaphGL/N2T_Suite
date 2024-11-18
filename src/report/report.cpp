@@ -1,5 +1,6 @@
 #include "report.hpp"
 #include <algorithm>
+#include <format>
 #include <fstream>
 #include <optional>
 #include <vector>
@@ -23,8 +24,8 @@ void Context::create_report(ReportType type, Coord start, Coord end,
 }
 
 std::string generate_individual_report(std::string_view line, Report report) {
-  constexpr std::string_view error_str = "error: ";
-  constexpr std::string_view warning_str = "warning: ";
+  constexpr std::string_view error_str = "error";
+  constexpr std::string_view warning_str = "warning";
 
   std::string_view error_type_str;
   switch (report.type) {
@@ -36,24 +37,30 @@ std::string generate_individual_report(std::string_view line, Report report) {
     break;
   }
 
-  std::size_t error_line_len = error_type_str.length() + report.error.length();
-  std::string report_str{error_type_str};
-  report_str += std::string(line) + "\n";
+  std::string report_str = std::format(
+      "--> {} {}:{}\n", error_type_str, report.start_row + 1, report.start_col + 1);
+  auto col = std::to_string(report.start_col);
+  std::string tab_pad{};
+  tab_pad.insert(0, 5 + col.length(), ' ');
+  tab_pad[1 + col.length()] = '|';
+  report_str += tab_pad + '\n';
+  report_str += col + " |  " + std::string(line) + "\n";
 
   std::string left_padding{};
-  auto aligned_padding_len =
-      error_type_str.length() + report.start_col;
-  left_padding.insert(0, aligned_padding_len, ' ');
-  report_str += left_padding + '^' + '\n';
+  auto aligned_padding_len = report.start_col;
+  left_padding.insert(0, aligned_padding_len + col.length(), ' ');
+
+  report_str += tab_pad + left_padding + '^' + '\n';
 
   left_padding = std::string();
-  aligned_padding_len -= report.error.length() / 2;
-  if (aligned_padding_len > error_line_len) {
-    aligned_padding_len = error_type_str.length();
+  aligned_padding_len = report.start_col - report.error.length() / 2;
+  if (aligned_padding_len >= report.error.length()) {
+    aligned_padding_len = 0;
   }
+  left_padding.insert(0, aligned_padding_len + col.length(), ' ');
 
-  left_padding.insert(0, aligned_padding_len, ' ');
-  report_str += left_padding + report.error + "\n\n";
+  report_str += tab_pad + left_padding + report.error + '\n';
+  report_str += tab_pad + "\n\n";
 
   std::replace(report_str.begin(), report_str.end(), '\t', ' ');
   return report_str;
