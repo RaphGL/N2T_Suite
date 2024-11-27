@@ -7,7 +7,8 @@
 
 namespace report {
 
-Context::Context(const char *filepath) : m_file{filepath} {}
+Context::Context(const char *filepath)
+    : m_file{filepath}, m_filepath{filepath} {}
 
 void Context::create_report(ReportType type, Coord start, Coord end,
                             std::string_view error_msg) {
@@ -23,7 +24,8 @@ void Context::create_report(ReportType type, Coord start, Coord end,
   m_reports.push_back(rep);
 }
 
-std::string generate_individual_report(std::string_view line, Report report) {
+std::string generate_individual_report(std::string_view filepath,
+                                       std::string_view line, Report report) {
   constexpr std::string_view error_str = "error";
   constexpr std::string_view warning_str = "warning";
 
@@ -40,8 +42,9 @@ std::string generate_individual_report(std::string_view line, Report report) {
   ++report.start_col;
   ++report.start_row;
 
-  std::string report_str = std::format("--> {} {}:{}\n", error_type_str,
-                                       report.start_row, report.start_col);
+  std::string report_str =
+      std::format("--> {} {}:{}:{}\n", error_type_str, filepath,
+                  report.start_row, report.start_col);
   auto row = std::to_string(report.start_row);
   std::string tab_pad{};
   tab_pad.insert(0, 5 + row.length(), ' ');
@@ -87,7 +90,8 @@ std::optional<std::string> Context::generate_final_report() {
       auto report = m_reports.at(curr_report);
 
       if (curr_row == report.start_row && curr_col == report.start_col) {
-        final_report.append(generate_individual_report(current_line, report));
+        final_report.append(
+            generate_individual_report(m_filepath, current_line, report));
 
         ++curr_report;
         if (curr_report >= m_reports.size()) {

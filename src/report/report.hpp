@@ -20,9 +20,10 @@ struct Report {
   ReportType type;
 };
 
-class Context {
+class Context final {
   std::ifstream m_file;
   std::vector<Report> m_reports;
+  std::string m_filepath;
 
 public:
   explicit Context(const char *filepath);

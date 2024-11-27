@@ -22,6 +22,7 @@ struct Arg {
 struct Part {
   std::string name;
   std::vector<Arg> args;
+  TokenCoordinate start_coord, end_coord;
 };
 
 struct InOut {
@@ -37,17 +38,16 @@ struct Chip {
   std::vector<InOut> inouts;
 };
 
-class Parser {
+class Parser final {
   std::vector<Token> m_tokens;
   std::size_t m_idx{0};
   std::string m_error_report{""};
   report::Context m_reporter;
 
-  bool eof();
-  bool peek_expected(TokenType tt);
-  Token peek();
-  std::optional<Token> eat();
-  void uneat();
+  bool eof() const;
+  bool peek_expected(TokenType tt) const noexcept;
+  Token peek() const;
+  std::optional<Token> eat() noexcept;
 
   std::optional<Chip> parse_chip();
   std::optional<std::vector<InOut>> parse_inout();
@@ -60,7 +60,7 @@ class Parser {
 public:
   explicit Parser(std::vector<Token> tokens, const char *filepath);
   std::optional<std::vector<Chip>> parse();
-  std::string get_error_report();
+  std::string get_error_report() const;
 };
 
 } // namespace hdl

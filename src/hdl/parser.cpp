@@ -11,9 +11,9 @@ namespace hdl {
 Parser::Parser(std::vector<Token> tokens, const char *filepath)
     : m_tokens{tokens}, m_reporter{filepath} {}
 
-std::string Parser::get_error_report() { return m_error_report; }
+std::string Parser::get_error_report() const { return m_error_report; }
 
-bool Parser::peek_expected(TokenType tt) {
+bool Parser::peek_expected(TokenType tt) const noexcept {
   std::size_t next_idx = m_idx + 1;
   if (next_idx >= m_tokens.size()) {
     return false;
@@ -27,11 +27,11 @@ bool Parser::peek_expected(TokenType tt) {
   return true;
 }
 
-Token Parser::peek() { return m_tokens.at(m_idx + 1); }
+Token Parser::peek() const { return m_tokens.at(m_idx + 1); }
 
-bool Parser::eof() { return m_idx >= m_tokens.size(); }
+bool Parser::eof() const { return m_idx >= m_tokens.size(); }
 
-std::optional<Token> Parser::eat() {
+std::optional<Token> Parser::eat() noexcept {
   std::size_t next_idx = m_idx + 1;
   if (next_idx < m_tokens.size()) {
     m_idx = next_idx;
@@ -146,7 +146,10 @@ std::optional<Part> Parser::parse_part() {
   }
 
   Part part{};
-  part.name = std::get<std::string>(this->eat().value().value);
+  auto token = this->eat().value();
+  part.name = std::get<std::string>(token.value);
+  part.start_coord = token.start_coord;
+  part.end_coord = token.end_coord;
 
   if (!this->peek_expected(TokenType::OpenParen)) {
     auto token = m_tokens.at(m_idx + 1);
@@ -243,8 +246,8 @@ std::optional<std::vector<InOut>> Parser::parse_inout() {
 
       if (!this->peek_expected(TokenType::Number)) {
         auto token = m_tokens.at(m_idx + 1);
-        this->emit_error(
-            token, std::format("expected a number, found `{}`", token.string()));
+        this->emit_error(token, std::format("expected a number, found `{}`",
+                                            token.string()));
         return std::nullopt;
       }
       port.size = std::get<std::size_t>(this->eat().value().value);
@@ -262,7 +265,8 @@ std::optional<std::vector<InOut>> Parser::parse_inout() {
 
     if (this->peek_expected(TokenType::Ident)) {
       auto token = this->peek();
-      this->emit_error(token, std::format("missing `,` before `{}`", token.string()));
+      this->emit_error(token,
+                       std::format("missing `,` before `{}`", token.string()));
       this->eat();
       break;
     }
@@ -288,8 +292,8 @@ std::optional<Chip> Parser::parse_chip() {
   Chip chip{};
   if (!this->peek_expected(TokenType::Ident)) {
     auto token = m_tokens.at(m_idx + 1);
-    this->emit_error(
-        token, std::format("expected an identifier, found `{}`", token.string()));
+    this->emit_error(token, std::format("expected an identifier, found `{}`",
+                                        token.string()));
     return std::nullopt;
   }
   auto curr_token = this->eat().value();
@@ -322,8 +326,8 @@ std::optional<Chip> Parser::parse_chip() {
 
   if (!this->peek_expected(TokenType::Ident)) {
     auto token = m_tokens.at(m_idx + 1);
-    this->emit_error(token,
-                     std::format("expected `PARTS`, found `{}`", token.string()));
+    this->emit_error(
+        token, std::format("expected `PARTS`, found `{}`", token.string()));
     return std::nullopt;
   }
 

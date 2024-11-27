@@ -12,4 +12,6 @@ int main() {
     std::cerr << parser.get_error_report();
     return 1;
   }
+
+  auto chips = ast.value();
 }

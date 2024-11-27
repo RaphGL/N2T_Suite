@@ -46,7 +46,7 @@ struct Token {
   std::string string();
 };
 
-class Lexer {
+class Lexer final {
   std::ifstream m_hdl_file;
   std::vector<Token> m_tokens;
   Token lex_number();
