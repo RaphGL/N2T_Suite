@@ -11,6 +11,20 @@ struct Coord {
   std::size_t col, row;
 };
 
+template <typename T>
+concept convertible_to_report_coord = requires(T a) {
+  std::is_integral<T>();
+  { a.col };
+  { a.row };
+};
+
+Coord coord(convertible_to_report_coord auto foreign_coord) {
+  return Coord{
+      .col = foreign_coord.col,
+      .row = foreign_coord.row,
+  };
+}
+
 enum class ReportType { Error, Warning };
 
 struct Report {

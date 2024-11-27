@@ -5,6 +5,9 @@
 int main() {
   hdl::Lexer tk{"test.hdl"};
   auto tokens = tk.tokenize();
+  for (const auto token : tokens) {
+    std::cout << token.string() << '\n';
+  }
 
   hdl::Parser parser{tokens, "test.hdl"};
   auto ast = parser.parse();

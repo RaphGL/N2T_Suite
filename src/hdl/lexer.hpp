@@ -43,15 +43,18 @@ struct Token {
   explicit Token(std::string id, TokenType tt, TokenCoordinate start,
                  TokenCoordinate end);
 
-  std::string string();
+  std::string string() const;
 };
 
 class Lexer final {
   std::ifstream m_hdl_file;
   std::vector<Token> m_tokens;
+  std::size_t m_curr_x{0}, m_curr_y{0};
+
   Token lex_number();
   Token lex_ident();
-  std::size_t m_curr_x{0}, m_curr_y{0};
+  void ignore_inline_comment();
+  void ignore_multiline_comment();
 
 public:
   explicit Lexer(const char *file_path);

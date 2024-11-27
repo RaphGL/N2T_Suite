@@ -15,7 +15,7 @@ Token::Token(std::string id, TokenType tt, TokenCoordinate start,
              TokenCoordinate end)
     : type{tt}, start_coord{start}, end_coord{end}, value{id} {}
 
-std::string Token::string() {
+std::string Token::string() const {
   switch (type) {
   case TokenType::OpenBrace:
     return "{";
@@ -52,6 +52,7 @@ std::string Token::string() {
 }
 
 Lexer::Lexer(const char *file_path) : m_hdl_file(file_path) {}
+
 Token Lexer::lex_number() {
   TokenCoordinate start{
       .row = m_curr_y,
@@ -64,11 +65,12 @@ Token Lexer::lex_number() {
 
   while (!m_hdl_file.eof() && std::isdigit(m_hdl_file.peek())) {
     numstr += m_hdl_file.get();
+    ++m_curr_x;
   }
 
   TokenCoordinate end{
       .row = m_curr_y,
-      .col = m_curr_x + numstr.length(),
+      .col = m_curr_x,
   };
 
   int num{std::stoi(numstr)};
@@ -93,13 +95,52 @@ Token Lexer::lex_ident() {
     }
 
     ident += m_hdl_file.get();
+    ++m_curr_x;
   }
 
   TokenCoordinate end{
       .row = m_curr_y,
-      .col = m_curr_x + ident.length(),
+      .col = m_curr_x,
   };
   return Token(ident, TokenType::Ident, start, end);
+}
+
+void Lexer::ignore_inline_comment() {
+  if (m_hdl_file.peek() != '/') {
+    return;
+  }
+  m_hdl_file.get();
+
+  while (!m_hdl_file.eof() && m_hdl_file.get() != '\n') {
+  }
+
+  ++m_curr_y;
+  m_curr_x = 0;
+}
+
+void Lexer::ignore_multiline_comment() {
+  if (m_hdl_file.peek() != '*') {
+    return;
+  }
+  m_hdl_file.get();
+  ++m_curr_x;
+
+  while (!m_hdl_file.eof()) {
+    auto ch = m_hdl_file.get();
+
+    if (ch == '\n') {
+      ++m_curr_y;
+      m_curr_x = 0;
+    } else {
+      ++m_curr_x;
+    }
+
+    if (ch == '*' && m_hdl_file.peek() == '/') {
+      m_hdl_file.get();
+      ++m_curr_x;
+      return;
+    }
+  }
 }
 
 std::vector<Token> Lexer::tokenize() {
@@ -108,10 +149,11 @@ std::vector<Token> Lexer::tokenize() {
     auto ch = m_hdl_file.get();
 
     if (std::isspace(ch)) {
-      ++m_curr_x;
       if (ch == '\n') {
         ++m_curr_y;
         m_curr_x = 0;
+      } else {
+        ++m_curr_x;
       }
       continue;
     }
@@ -120,6 +162,15 @@ std::vector<Token> Lexer::tokenize() {
         .row = m_curr_y,
         .col = m_curr_x,
     };
+
+    if (ch == '/') {
+      if (m_hdl_file.peek() == '*') {
+        this->ignore_multiline_comment();
+      } else if (m_hdl_file.peek() == '/') {
+        this->ignore_inline_comment();
+      }
+      continue;
+    }
 
     if (ch == '{') {
       Token tok{ch, TokenType::OpenBrace, coord, coord};

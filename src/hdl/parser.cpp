@@ -1,6 +1,8 @@
 #include "parser.hpp"
+#include "../report/report.hpp"
 #include "lexer.hpp"
 #include <format>
+#include <iostream>
 #include <optional>
 #include <vector>
 
@@ -42,17 +44,8 @@ std::optional<Token> Parser::eat() noexcept {
 }
 
 void Parser::emit_error(const Token &tok, std::string_view error) {
-  report::Coord coord_start{
-      .col = tok.start_coord.col,
-      .row = tok.start_coord.row,
-  };
-
-  report::Coord coord_end{
-      .col = tok.end_coord.col,
-      .row = tok.end_coord.row,
-  };
-
-  m_reporter.create_report(ReportType::Error, coord_start, coord_end, error);
+  m_reporter.create_report(ReportType::Error, report::coord(tok.start_coord),
+                           report::coord(tok.end_coord), error);
 }
 
 std::optional<Range> Parser::parse_range() {
@@ -73,6 +66,12 @@ std::optional<Range> Parser::parse_range() {
 
   Range range{};
   range.from = std::get<std::size_t>(this->eat().value().value);
+
+  if (this->peek_expected(TokenType::CloseBracket)) {
+    this->eat();
+    range.to = range.from;
+    return range;
+  }
 
   if (!this->peek_expected(TokenType::RangeOp)) {
     auto token = m_tokens.at(m_idx + 1);

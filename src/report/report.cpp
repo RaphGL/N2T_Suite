@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <format>
 #include <fstream>
+#include <iostream>
 #include <optional>
 #include <vector>
 
@@ -39,22 +40,19 @@ std::string generate_individual_report(std::string_view filepath,
     break;
   }
 
-  ++report.start_col;
-  ++report.start_row;
-
   std::string report_str =
       std::format("--> {} {}:{}:{}\n", error_type_str, filepath,
-                  report.start_row, report.start_col);
-  auto row = std::to_string(report.start_row);
+                  report.start_row + 1, report.start_col + 1);
+  auto row_number = std::format("{}", report.start_row);
   std::string tab_pad{};
-  tab_pad.insert(0, 5 + row.length(), ' ');
-  tab_pad[1 + row.length()] = '|';
+  tab_pad.insert(0, 4 + row_number.length(), ' ');
+  tab_pad[1 + row_number.length()] = '|';
   report_str += tab_pad + '\n';
-  report_str += row + " |  " + std::string(line) + "\n";
+  report_str += row_number + " |  " + std::string(line) + "\n";
 
   std::string left_padding{};
   auto aligned_padding_len = report.start_col;
-  left_padding.insert(0, aligned_padding_len, ' ');
+  left_padding.insert(0, aligned_padding_len - 1, ' ');
 
   report_str += tab_pad + left_padding + '^' + '\n';
 
@@ -63,7 +61,7 @@ std::string generate_individual_report(std::string_view filepath,
   if (aligned_padding_len >= line.length()) {
     aligned_padding_len = 0;
   }
-  left_padding.insert(0, aligned_padding_len + row.length(), ' ');
+  left_padding.insert(0, aligned_padding_len + row_number.length(), ' ');
 
   report_str += tab_pad + left_padding + report.error + '\n';
   report_str += tab_pad + "\n\n";
@@ -86,7 +84,6 @@ std::optional<std::string> Context::generate_final_report() {
     curr_col = 0;
 
     for (auto _ : current_line) {
-
       auto report = m_reports.at(curr_report);
 
       if (curr_row == report.start_row && curr_col == report.start_col) {
