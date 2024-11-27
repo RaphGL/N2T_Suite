@@ -1,0 +1,7 @@
+CHIP asdf {
+IN asdf;
+OUT asdf, sd md
+
+PARTS:
+    Or(a=b, bc=);
+}

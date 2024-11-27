@@ -5,6 +5,9 @@ project(n2t_suite
   LANGUAGES CXX
 )
 
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 20)
+
 if (CMAKE_BUILD_TYPE STREQUAL "")
   set(CMAKE_BUILD_TYPE Debug)
 endif()
@@ -23,7 +26,5 @@ add_subdirectory(src/report)
 add_executable(n2t
   src/main.cpp
 )
-
-target_compile_features(n2t PUBLIC cxx_std_20)
 
 target_link_libraries(n2t PUBLIC n2t_hdl n2t_report)
