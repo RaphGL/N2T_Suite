@@ -2,7 +2,6 @@
 #include <algorithm>
 #include <format>
 #include <fstream>
-#include <iostream>
 #include <optional>
 #include <vector>
 
@@ -43,7 +42,7 @@ std::string generate_individual_report(std::string_view filepath,
   std::string report_str =
       std::format("--> {} {}:{}:{}\n", error_type_str, filepath,
                   report.start_row + 1, report.start_col + 1);
-  auto row_number = std::format("{}", report.start_row);
+  auto row_number = std::format("{}", report.start_row + 1);
   std::string tab_pad{};
   tab_pad.insert(0, 4 + row_number.length(), ' ');
   tab_pad[1 + row_number.length()] = '|';

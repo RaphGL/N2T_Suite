@@ -37,6 +37,7 @@ ChipResolver::ChipResolver(Chip chip, const char *filepath)
 
 std::vector<Pin> ChipResolver::resolve() {
   for (const auto &part : m_chip.parts) {   
+    
   }
 }
 }; // namespace hdl
