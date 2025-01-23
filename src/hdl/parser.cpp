@@ -54,7 +54,9 @@ std::optional<Range> Parser::parse_range() {
                      std::format("expected `[`, found `{}`", token.string()));
     return std::nullopt;
   }
-  this->eat();
+  auto token = this->eat().value();
+  Range range{};
+  range.start_coord = token.start_coord;
 
   if (!this->peek_expected(TokenType::Number)) {
     auto token = m_tokens.at(m_idx + 1);
@@ -63,12 +65,12 @@ std::optional<Range> Parser::parse_range() {
     return std::nullopt;
   }
 
-  Range range{};
   range.from = std::get<std::size_t>(this->eat().value().value);
 
   if (this->peek_expected(TokenType::CloseBracket)) {
-    this->eat();
+    auto token = this->eat().value();
     range.to = range.from;
+    range.end_coord = token.end_coord;
     return range;
   }
 
@@ -94,7 +96,9 @@ std::optional<Range> Parser::parse_range() {
                      std::format("expected `]`, found `{}`", token.string()));
     return std::nullopt;
   }
-  this->eat();
+
+  token = this->eat().value();
+  range.end_coord = token.end_coord;
 
   return range;
 }
@@ -108,7 +112,9 @@ std::optional<Arg> Parser::parse_arg() {
     return std::nullopt;
   }
   Arg arg{};
-  arg.name = std::get<std::string>(this->eat().value().value);
+  auto token = this->eat().value();
+  arg.name = std::get<std::string>(token.value);
+  arg.start_coord = token.start_coord;
 
   if (this->peek_expected(TokenType::OpenBracket)) {
     arg.range = this->parse_range();
@@ -130,7 +136,10 @@ std::optional<Arg> Parser::parse_arg() {
         token, std::format("expected an argument, found `{}`", token.string()));
     return std::nullopt;
   }
-  arg.output = std::get<std::string>(this->eat().value().value);
+
+  token = this->eat().value();
+  arg.output = std::get<std::string>(token.value);
+  arg.end_coord = token.end_coord;
 
   return arg;
 }
@@ -147,7 +156,6 @@ std::optional<Part> Parser::parse_part() {
   auto token = this->eat().value();
   part.name = std::get<std::string>(token.value);
   part.start_coord = token.start_coord;
-  part.end_coord = token.end_coord;
 
   if (!this->peek_expected(TokenType::OpenParen)) {
     auto token = m_tokens.at(m_idx + 1);
@@ -193,7 +201,8 @@ std::optional<Part> Parser::parse_part() {
                      std::format("expected `;`, found `{}`", token.string()));
     return std::nullopt;
   }
-  this->eat();
+  token = this->eat().value();
+  part.end_coord = token.end_coord;
 
   return part;
 }
@@ -236,8 +245,11 @@ std::optional<std::vector<InOut>> Parser::parse_inout() {
     }
 
     InOut port = inout;
-    port.name = std::get<std::string>(this->eat().value().value);
+    auto token = this->eat().value();
+    port.name = std::get<std::string>(token.value);
     port.size = 1;
+    port.start_coord = token.start_coord;
+    port.end_coord = token.end_coord;
 
     if (this->peek_expected(TokenType::OpenBracket)) {
       this->eat();
@@ -256,7 +268,8 @@ std::optional<std::vector<InOut>> Parser::parse_inout() {
             token, std::format("expected `}}`, found `{}`", token.string()));
         return std::nullopt;
       }
-      this->eat();
+      auto token = this->eat().value();
+      port.end_coord = token.end_coord;
     }
 
     ports.push_back(port);

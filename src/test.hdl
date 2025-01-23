@@ -47,7 +47,7 @@ CHIP ALU {
     PARTS:
 
     // if (zx==1) set x = 0
-    Mux16(a=x,b=false,sel=zx,out=;
+    Mux16(a=x,b=false,sel=zx);
 
     // if (zy==1) set y = 0
     Mux16(a=y,b=false,sel=zy,out=zyout); 

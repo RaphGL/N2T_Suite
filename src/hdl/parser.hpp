@@ -11,12 +11,14 @@ namespace hdl {
 
 struct Range {
   std::size_t from, to;
+  TokenCoordinate start_coord, end_coord;
 };
 
 struct Arg {
   std::string name;
   std::optional<Range> range;
   std::string output;
+  TokenCoordinate start_coord, end_coord;
 };
 
 struct Part {
@@ -30,6 +32,7 @@ struct InOut {
   bool input;
   std::string name;
   std::size_t size;
+  TokenCoordinate start_coord, end_coord;
 };
 
 struct Chip {
