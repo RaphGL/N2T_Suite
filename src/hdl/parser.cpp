@@ -5,47 +5,7 @@
 #include <optional>
 #include <vector>
 
-using report::ReportType;
-
 namespace hdl {
-
-Parser::Parser(std::vector<Token> tokens, const char *filepath)
-    : m_tokens{tokens}, m_reporter{filepath} {}
-
-std::string Parser::get_error_report() const { return m_error_report; }
-
-bool Parser::peek_expected(TokenType tt) const noexcept {
-  std::size_t next_idx = m_idx + 1;
-  if (next_idx >= m_tokens.size()) {
-    return false;
-  }
-
-  auto next_token = m_tokens.at(next_idx);
-  if (next_token.type != tt) {
-    return false;
-  }
-
-  return true;
-}
-
-Token Parser::peek() const { return m_tokens.at(m_idx + 1); }
-
-bool Parser::eof() const { return m_idx >= m_tokens.size(); }
-
-std::optional<Token> Parser::eat() noexcept {
-  std::size_t next_idx = m_idx + 1;
-  if (next_idx < m_tokens.size()) {
-    m_idx = next_idx;
-    return m_tokens[m_idx];
-  }
-
-  return std::nullopt;
-}
-
-void Parser::emit_error(const Token &tok, std::string_view error) {
-  m_reporter.create_report(ReportType::Error, report::coord(tok.start_coord),
-                           report::coord(tok.end_coord), error);
-}
 
 std::optional<Range> Parser::parse_range() {
   if (!this->peek_expected(TokenType::OpenBracket)) {

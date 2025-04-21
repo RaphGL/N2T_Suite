@@ -1,7 +1,6 @@
 #include "lexer.hpp"
 #include <cctype>
 #include <fstream>
-#include <iostream>
 #include <vector>
 
 namespace assembly {
@@ -90,8 +89,6 @@ std::vector<Token> Lexer::tokenize() {
   }
 
   auto tok = m_tokens.back();
-  std::cout << "test: " << std::get<int>(tok.value) << '\n';
-
   return m_tokens;
 }
 
