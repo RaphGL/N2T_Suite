@@ -144,7 +144,6 @@ void Lexer::ignore_multiline_comment() {
 }
 
 std::vector<Token> Lexer::tokenize() {
-  m_hdl_file.peek();
   while (!m_hdl_file.eof()) {
     auto ch = m_hdl_file.get();
 

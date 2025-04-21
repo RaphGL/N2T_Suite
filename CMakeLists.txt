@@ -22,9 +22,10 @@ endif()
 
 add_subdirectory(src/hdl)
 add_subdirectory(src/report)
+add_subdirectory(src/asm)
 
 add_executable(n2t
   src/main.cpp
 )
 
-target_link_libraries(n2t PUBLIC n2t_hdl n2t_report)
+target_link_libraries(n2t PUBLIC n2t_hdl n2t_report n2t_asm)
