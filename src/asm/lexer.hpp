@@ -26,6 +26,7 @@ enum class TokenType {
   OpenParen,
   CloseParen,
   Equal,
+  Newline,
 };
 
 struct TokenCoordinate {

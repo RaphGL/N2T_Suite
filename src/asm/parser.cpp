@@ -1,4 +1,4 @@
-#include "../base_parser.hpp"
+#include "parser.hpp"
 #include "lexer.hpp"
 #include <format>
 #include <optional>
@@ -6,99 +6,6 @@
 #include <variant>
 
 namespace assembly {
-
-struct AInstr {
-  TokenCoordinate start;
-  TokenCoordinate end;
-  std::variant<std::string, std::size_t> value;
-};
-
-enum class Operator {
-  // unary
-  Neg,
-  Not,
-
-  // binary
-  Add,
-  Sub,
-  And,
-  Or,
-};
-
-enum class Address {
-  A,
-  D,
-  M,
-};
-
-// operand can either be in the interval {-1, 0, 1} or an address
-using Operand = std::variant<Address, char>;
-
-struct UnaryComp {
-  TokenCoordinate start;
-  TokenCoordinate end;
-  Operator op;
-  Operand operand;
-};
-
-struct BinaryComp {
-  TokenCoordinate start;
-  TokenCoordinate end;
-  Address left;
-  Operator op;
-  Operand right;
-};
-
-enum class Jump {
-  None,
-
-  JGT,
-  JEQ,
-  JLT,
-  JGE,
-  JNE,
-  JMP,
-};
-
-enum class Destination {
-  None,
-
-  A,
-  D,
-  M,
-  MD,
-  AM,
-  AD,
-  AMD
-};
-
-struct CInstr {
-  TokenCoordinate start;
-  TokenCoordinate end;
-  Destination dest;
-  std::variant<UnaryComp, BinaryComp> comp;
-  Jump jump;
-};
-
-struct Label {
-  TokenCoordinate start;
-  TokenCoordinate end;
-  std::string value;
-};
-
-using Instruction = std::variant<Label, AInstr, CInstr>;
-
-class Parser final : public BaseParser<Token, TokenType> {
-  std::vector<Instruction> m_instructions;
-  using BaseParser::BaseParser;
-
-  std::optional<CInstr> parse_cinstr();
-  std::optional<AInstr> parse_ainstr();
-  std::optional<Label> parse_label();
-
-public:
-  std::optional<std::vector<Instruction>> parse();
-};
 
 std::string get_stringified_token(decltype(Token::value) token) {
   if (std::holds_alternative<int>(token)) {
@@ -120,7 +27,6 @@ std::optional<Label> Parser::parse_label() {
                                  get_stringified_token(curr_token.value)));
     return std::nullopt;
   }
-  this->eat();
 
   if (!this->peek_expected(TokenType::Label)) {
     this->emit_error(
@@ -137,6 +43,7 @@ std::optional<Label> Parser::parse_label() {
                                  get_stringified_token(this->peek().value)));
     return std::nullopt;
   }
+  this->eat();
 
   Label label{};
   if (label_option.has_value()) {
@@ -151,30 +58,58 @@ std::optional<Label> Parser::parse_label() {
     }
 
     label.value = std::get<std::string>(label_token.value);
-    label.start = label_token.start_coord;
-    label.end = label_token.end_coord;
+    label.start_coord = curr_token.start_coord;
+    label.end_coord = label_token.end_coord;
   }
 
   return label;
 }
 
-CInstr Parser::parse_cinstr() {}
+// todo
+std::optional<CInstr> Parser::parse_cinstr() {
+  auto curr_token = this->curr_token();
+  return std::nullopt;
+}
 
-AInstr Parser::parse_ainstr() {}
+std::optional<AInstr> Parser::parse_ainstr() {
+  auto curr_token = this->curr_token();
+  if (curr_token.type != TokenType::AtSymbol) {
+    this->emit_error(curr_token,
+                     std::format("Expected `@`, found `{}`",
+                                 get_stringified_token(curr_token.value)));
+    return std::nullopt;
+  }
+
+  if (!this->peek_expected(TokenType::Label) &&
+      !this->peek_expected(TokenType::Number)) {
+    auto next_token = this->peek();
+    this->emit_error(next_token,
+                     std::format("Expected `@`, found `{}`",
+                                 get_stringified_token(next_token.value)));
+    return std::nullopt;
+  }
+  auto inst_value = this->eat().value();
+
+  AInstr ainstr;
+  ainstr.start_coord = curr_token.start_coord;
+  ainstr.end_coord = inst_value.end_coord;
+
+  if (std::holds_alternative<std::string>(inst_value.value)) {
+    ainstr.value = std::get<std::string>(inst_value.value);
+  } else if (std::holds_alternative<std::size_t>(inst_value.value)) {
+    ainstr.value = std::get<std::size_t>(inst_value.value);
+  }
+
+  return ainstr;
+}
 
 std::optional<std::vector<Instruction>> Parser::parse() {
-  while (this->eof()) {
-    auto token_opt = this->eat();
-    if (!token_opt.has_value()) {
-      break;
-    }
+  std::optional<Label> label;
+  std::optional<AInstr> ainstr;
+  std::optional<CInstr> cinstr;
 
-    auto token = token_opt.value();
-
-    std::optional<Label> label;
-    std::optional<AInstr> ainstr;
-    std::optional<CInstr> cinstr;
-
+  while (!this->eof()) {
+    auto token = this->curr_token();
     // todo: handle failing case for parsing
     switch (token.type) {
     case TokenType::OpenParen:
@@ -198,6 +133,14 @@ std::optional<std::vector<Instruction>> Parser::parse() {
       }
       break;
     }
+
+    auto end_token = this->eat();
+    if (end_token.has_value() && end_token.value().type != TokenType::Newline) {
+      auto next_token = this->peek();
+      this->emit_error(next_token, std::format("Expected a new line, found `{}`", get_stringified_token(next_token.value)));
+      break;
+    }
+    this->eat();
   }
 
   auto error_report = m_reporter.generate_final_report();

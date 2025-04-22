@@ -63,9 +63,8 @@ Token BaseParser<Token, TokenType>::peek() const {
 
 template <typename Token, typename TokenType>
 std::optional<Token> BaseParser<Token, TokenType>::eat() noexcept {
-  std::size_t next_idx = m_idx + 1;
-  if (next_idx < m_tokens.size()) {
-    m_idx = next_idx;
+  ++m_idx;
+  if (m_idx < m_tokens.size()) {
     return m_tokens[m_idx];
   }
 

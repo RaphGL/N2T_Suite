@@ -15,6 +15,14 @@ std::vector<Token> Lexer::tokenize() {
 
     if (std::isspace(ch)) {
       if (ch == '\n') {
+        Token newline{
+          .type = TokenType::Newline,
+          .start_coord = { .row = m_curr_y, .col = m_curr_x,},
+          .end_coord = { .row = m_curr_y, .col = m_curr_x,},
+          .value = ch,
+        };
+        m_tokens.push_back(newline);
+
         ++m_curr_y;
         m_curr_x = 0;
       } else {
@@ -40,7 +48,7 @@ std::vector<Token> Lexer::tokenize() {
       type = TokenType::D;
       break;
     case '@':
-      type = TokenType::Ampersand;
+      type = TokenType::AtSymbol;
       break;
     case '+':
       type = TokenType::Plus;

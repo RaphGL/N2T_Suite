@@ -1,7 +1,9 @@
 #include "asm/lexer.hpp"
+#include "asm/parser.hpp"
 #include "hdl/lexer.hpp"
 #include "hdl/parser.hpp"
 #include <iostream>
+#include <variant>
 
 int main() {
   // hdl::Lexer tk{"test.hdl"};
@@ -15,23 +17,30 @@ int main() {
   // }
 
   // auto chips = ast.value();
+  // std::cout << chips[0].parts[2].name;
 
   assembly::Lexer lex{"test.asm"};
   auto tokens = lex.tokenize();
-  std::cout << "starting tokenizer\n";
+  assembly::Parser parser{tokens, "test.asm"};
+  auto instructions = parser.parse();
 
-  for (const auto &tok : tokens) {
-    std::cout << tok.start_coord.col << ':' << tok.start_coord.row << ' ';
-    if (tok.type == assembly::TokenType::Number) {
-      std::cout << "number: " << std::get<std::size_t>(tok.value);
-    } else if (tok.type == assembly::TokenType::Label) {
-      std::cout << "label " << std::get<std::string>(tok.value);
-    } else if (tok.type == assembly::TokenType::Unknown) {
-      std::cout << "unknown: " << (char)std::get<int>(tok.value);
-    } else {
-      std::cout << "char: " << (char)std::get<int>(tok.value);
+  std::cout << instructions.value().size() << '\n';
+
+  for (auto inst : instructions.value()) {
+    if (std::holds_alternative<assembly::AInstr>(inst)) {
+      auto i =  std::get<assembly::AInstr>(inst).value;
+
+      if (std::holds_alternative<std::size_t>(i)) {
+        std::cout << "A: " << std::get<std::size_t>(i) << '\n';
+      }
+      else if (std::holds_alternative<std::string>(i)) {
+        std::cout << "A: " << std::get<std::string>(i) << '\n';
+      }
     }
 
-    std::cout << '\n';
+    if (std::holds_alternative<assembly::Label>(inst)) {
+      auto i = std::get<assembly::Label>(inst);
+      std::cout << "L: " << i.value << '\n';
+    }
   }
 }
