@@ -16,6 +16,7 @@ protected:
 
   bool eof() const;
   bool peek_expected(TokenType tt) const noexcept;
+  Token curr_token() const;
   Token peek() const;
   std::optional<Token> eat() noexcept;
   void emit_error(const Token &tok, std::string_view error);
@@ -33,6 +34,11 @@ BaseParser<Token, TokenType>::BaseParser(std::vector<Token> tokens,
 template <typename Token, typename TokenType>
 bool BaseParser<Token, TokenType>::eof() const {
   return m_idx >= m_tokens.size();
+}
+
+template<typename Token, typename TokenType> 
+Token BaseParser<Token, TokenType>::curr_token() const {
+  return m_tokens.at(m_idx);
 }
 
 template <typename Token, typename TokenType>
