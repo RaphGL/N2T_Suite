@@ -1,6 +1,0 @@
-// chip = "CHIP" ident "{" (inout)* "PARTS:" (part)* "}"
-// ident = A-z | 0-9 | "_"
-// inout = ("IN" | "OUT") (ident ("[" 0-9* "]")?),* ";"
-// part = ident "("(arg),* ")";
-// arg = ident (range)? "=" ident
-// range = "[" (0-9)* ".." (0-9)* "]"

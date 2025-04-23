@@ -1,0 +1,18 @@
+dest = "A" | "D" | "M" | "MD" | "AM" | "AD" | "AMD"
+jump = "JGT" | "JEQ" | "JLT" | "JGE" | "JNE" | "JLE" | "JMP"
+
+not_comp = "!" ("D" | "A" | "M")
+neg_comp = "-" ("D" | "A" | "1" | "M")
+digit_comp = 1 | 0
+reg_comp = "D" | "A" | "M"
+
+unary_comp = not_comp | neg_comp | digit_comp | reg_comp
+
+binary_comp = "D+1" | "A+1" | "D-1" | "A-1" | "M+1" | "M-1" | "D+A" | "D-A" | "D&A" | "D|A" |
+				"A-D" | "M-D" | "D+M" | "D-M" | "D&M" | "D|M"
+comp = unary_comp | binary_comp
+cinstr = (dest "=")? comp (";" jump)?
+
+number = [0-9]*
+symbol = [A-z][0-9]* 
+ainstr = "@" number | symbol
