@@ -24,23 +24,5 @@ int main() {
   assembly::Parser parser{tokens, "test.asm"};
   auto instructions = parser.parse();
 
-  std::cout << instructions.value().size() << '\n';
-
-  for (auto inst : instructions.value()) {
-    if (std::holds_alternative<assembly::AInstr>(inst)) {
-      auto i =  std::get<assembly::AInstr>(inst).value;
-
-      if (std::holds_alternative<std::size_t>(i)) {
-        std::cout << "A: " << std::get<std::size_t>(i) << '\n';
-      }
-      else if (std::holds_alternative<std::string>(i)) {
-        std::cout << "A: " << std::get<std::string>(i) << '\n';
-      }
-    }
-
-    if (std::holds_alternative<assembly::Label>(inst)) {
-      auto i = std::get<assembly::Label>(inst);
-      std::cout << "L: " << i.value << '\n';
-    }
-  }
+  std::cout << parser.get_error_report();
 }

@@ -3,6 +3,7 @@
 
 #include "../base_parser.hpp"
 #include "lexer.hpp"
+#include <cstdint>
 
 namespace assembly {
 
@@ -13,6 +14,8 @@ struct AInstr {
 };
 
 enum class Operator {
+  None, 
+
   // unary
   Neg,
   Not,
@@ -25,13 +28,14 @@ enum class Operator {
 };
 
 enum class Address {
+  None, 
   A,
   D,
   M,
 };
 
-// operand can either be in the interval {-1, 0, 1} or an address
-using Operand = std::variant<Address, char>;
+// operand can either be in the interval 0, 1 or an address name
+using Operand = std::variant<Address, std::size_t>;
 
 struct UnaryComp {
   TokenCoordinate start;
@@ -56,6 +60,7 @@ enum class Jump {
   JLT,
   JGE,
   JNE,
+  JLE,
   JMP,
 };
 
@@ -89,6 +94,10 @@ using Instruction = std::variant<Label, AInstr, CInstr>;
 
 class Parser final : public BaseParser<Token, TokenType> {
   std::vector<Instruction> m_instructions;
+
+  std::optional<Jump> parse_jump();
+  std::optional<Destination> parse_dest();
+  std::optional<std::variant<UnaryComp, BinaryComp>> parse_comp();
 
   std::optional<CInstr> parse_cinstr();
   std::optional<AInstr> parse_ainstr();

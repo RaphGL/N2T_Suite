@@ -46,6 +46,7 @@ struct Token {
   std::string string() const;
 };
 
+// todo: add error reporting so that invalid tokens are caught
 class Lexer final {
   std::ifstream m_hdl_file;
   std::vector<Token> m_tokens;
