@@ -3,7 +3,6 @@
 
 #include "../base_parser.hpp"
 #include "lexer.hpp"
-#include <cstdint>
 
 namespace assembly {
 
