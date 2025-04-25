@@ -1,5 +1,7 @@
+#include "codegen.hpp"
 #include "../report/report.hpp"
 #include "parser.hpp"
+#include <cmath>
 #include <cstdint>
 #include <format>
 #include <unordered_map>
@@ -8,19 +10,266 @@
 
 namespace assembly {
 
-class CodeGen {
-  std::vector<Instruction> m_instructions;
-  std::uint16_t m_pc{0};
-  std::string m_error_report{""};
-  report::Context m_reporter;
-
-public:
-  explicit CodeGen(std::vector<Instruction> instructions, const char *filepath);
-  std::vector<std::uint16_t> compile();
-};
-
 CodeGen::CodeGen(std::vector<Instruction> instructions, const char *filepath)
     : m_instructions{instructions}, m_reporter{filepath} {}
+
+// todo: emit errors
+std::uint16_t
+CodeGen::compile_cinstr_comp(std::variant<UnaryComp, BinaryComp> comp) {
+  constexpr std::uint16_t comp_mask = 0b0001111111000000;
+
+  std::uint16_t inst = 0;
+
+  if (std::holds_alternative<UnaryComp>(comp)) {
+    auto unary = std::get<UnaryComp>(comp);
+    switch (unary.op) {
+    case Operator::None:
+      if (std::holds_alternative<std::size_t>(unary.operand)) {
+        auto digit = std::get<std::size_t>(unary.operand);
+        if (digit) {
+          inst = 0b0111111;
+        } else {
+          inst = 0b0101010;
+        }
+      }
+
+      if (std::holds_alternative<Address>(unary.operand)) {
+        auto addr = std::get<Address>(unary.operand);
+        switch (addr) {
+        case Address::D:
+          inst = 0b0001100;
+          break;
+        case Address::A:
+          inst = 0b0110000;
+          break;
+        case Address::M:
+          inst = 0b1110000;
+          break;
+        default:
+          // todo:emit error: invalid address
+          break;
+        }
+      }
+      break;
+
+    case Operator::Neg:
+      if (std::holds_alternative<std::size_t>(unary.operand)) {
+        auto digit = std::get<std::size_t>(unary.operand);
+        if (digit) {
+          inst = 0b0111010;
+        } else {
+          // todo: emit error: zero cannot be negated
+        }
+      }
+
+      if (std::holds_alternative<Address>(unary.operand)) {
+        auto addr = std::get<Address>(unary.operand);
+        switch (addr) {
+        case Address::D:
+          inst = 0b0001111;
+          break;
+        case Address::A:
+          inst = 0b0110011;
+          break;
+        case Address::M:
+          inst = 0b1110011;
+          break;
+        default:
+          // todo: emit error: invalid address or address cannot be negated
+          break;
+        }
+      }
+      break;
+
+    case Operator::Not:
+      if (std::holds_alternative<std::size_t>(unary.operand)) {
+        // todo: emit error: binary number cannot be notted
+      }
+
+      if (std::holds_alternative<Address>(unary.operand)) {
+        auto addr = std::get<Address>(unary.operand);
+        switch (addr) {
+        case Address::D:
+          inst = 0b0001111;
+          break;
+        case Address::A:
+          inst = 0b0110011;
+          break;
+        case Address::M:
+          inst = 0b1110011;
+          break;
+        default:
+          // todo: emit error: invalid address or address cannot be negated
+          break;
+        }
+      }
+      break;
+
+    default:
+      // todo:emit error: invalid operator
+      break;
+    }
+  }
+
+  if (std::holds_alternative<BinaryComp>(comp)) {
+    auto binary = std::get<BinaryComp>(comp);
+    switch (binary.op) {
+    case Operator::Sub:
+      [[fallthrough]];
+    case Operator::Add:
+      if (std::holds_alternative<std::size_t>(binary.right)) {
+        auto digit = std::get<std::size_t>(binary.right);
+        if (!digit) {
+          // todo:emit error: digit cannot be 0
+        }
+
+        switch (binary.left) {
+        case Address::D:
+          inst = binary.op == Operator::Add ? 0b0011111 : 0b0001110;
+          break;
+        case Address::A:
+          inst = binary.op == Operator::Add ? 0b0110111 : 0b0110010;
+          break;
+        case Address::M:
+          inst = binary.op == Operator::Add ? 0b1110111 : 0b1110010;
+          break;
+        default:
+          // todo: emit error: invalid address
+          break;
+        }
+      }
+
+      if (std::holds_alternative<Address>(binary.right)) {
+        auto addr = std::get<Address>(binary.right);
+        if (binary.left == Address::D) {
+          switch (addr) {
+          case Address::A:
+            inst = binary.op == Operator::Add ? 0b0000010 : 0b0010011;
+            break;
+          case Address::M:
+            inst = binary.op == Operator::Add ? 0b1000010 : 0b1010011;
+            break;
+          default:
+            // todo: emit error: invalid address
+            break;
+          }
+        } else if (addr == Address::D && binary.op == Operator::Sub) {
+          switch (binary.left) {
+          case Address::A:
+            inst = 0b0000111;
+            break;
+          case Address::M:
+            inst = 0b1000111;
+            break;
+          default:
+            // todo: emit error: invalid address
+            break;
+          }
+        } else {
+          // todo: emit error: invalid address
+        }
+      }
+      break;
+
+    case Operator::Or:
+      [[fallthrough]];
+    case Operator::And:
+      if (binary.left != Address::D) {
+        // todo:emit error: left hand side has to be a D address
+      }
+
+      if (!std::holds_alternative<Address>(binary.right)) {
+        // emit error: and can only be used with addresses
+        auto addr = std::get<Address>(binary.right);
+        switch (addr) {
+        case Address::A:
+          inst = binary.op == Operator::And ? 0b0000000 : 0b0010101;
+          break;
+        case Address::M:
+          inst = binary.op == Operator::And ? 0b1000000 : 0b1010101;
+          break;
+        default:
+          // todo:emit error invalid address
+          break;
+        }
+      } else {
+        // todo:emit error: right hand side can only be an address
+      }
+
+      break;
+
+    default:
+      // todo: emit error: invalid operator
+      break;
+    }
+  }
+
+  return (inst << 6) & comp_mask;
+}
+
+std::uint16_t CodeGen::compile_cinstr_dest(Destination dest) const noexcept {
+  constexpr std::uint16_t dest_mask = 0b0000000000111000;
+
+  std::uint16_t inst = 0;
+  switch (dest) {
+  case Destination::None:
+    break;
+  case Destination::M:
+    inst = 0b001;
+    break;
+  case Destination::D:
+    inst = 0b010;
+    break;
+  case Destination::MD:
+    inst = 0b011;
+    break;
+  case Destination::A:
+    inst = 0b100;
+    break;
+  case Destination::AM:
+    inst = 0b101;
+    break;
+  case Destination::AD:
+    inst = 0b110;
+    break;
+  case Destination::AMD:
+    inst = 0b111;
+    break;
+  }
+
+  return (inst << 3) & dest_mask;
+}
+
+std::uint16_t CodeGen::compile_cinstr_jump(Jump jump) const noexcept {
+  std::uint16_t inst = 0;
+  switch (jump) {
+  case Jump::None:
+    break;
+  case Jump::JGT:
+    inst = 0b001;
+    break;
+  case Jump::JEQ:
+    inst = 0b010;
+    break;
+  case Jump::JGE:
+    inst = 0b011;
+    break;
+  case Jump::JLT:
+    inst = 0b100;
+    break;
+  case Jump::JNE:
+    inst = 0b101;
+    break;
+  case Jump::JLE:
+    inst = 0b110;
+    break;
+  case Jump::JMP:
+    inst = 0b111;
+    break;
+  }
+
+  return inst;
+}
 
 std::vector<std::uint16_t> CodeGen::compile() {
   std::vector<std::uint16_t> compiled_insts{};
@@ -77,9 +326,17 @@ std::vector<std::uint16_t> CodeGen::compile() {
 
     if (std::holds_alternative<CInstr>(inst_variant)) {
       auto inst = std::get<CInstr>(inst_variant);
+      std::uint16_t binary = 0b1110000000000000 |
+                             this->compile_cinstr_comp(inst.comp) |
+                             this->compile_cinstr_dest(inst.dest) |
+                             this->compile_cinstr_jump(inst.jump);
+      compiled_insts.push_back(binary);
     }
 
     ++m_pc;
   }
+
+  return compiled_insts;
 }
+
 }; // namespace assembly
