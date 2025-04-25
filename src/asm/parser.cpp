@@ -10,7 +10,7 @@ namespace assembly {
 
 std::string get_stringified_token(decltype(Token::value) token) {
   if (std::holds_alternative<int>(token)) {
-    return std::to_string(static_cast<wchar_t>(std::get<int>(token)));
+    return std::string(1, std::get<int>(token));
   }
 
   if (std::holds_alternative<std::size_t>(token)) {
@@ -235,7 +235,10 @@ std::optional<std::variant<UnaryComp, BinaryComp>> Parser::parse_comp() {
   // D+M, D-M, D&M, D|M
 
   if (!std::holds_alternative<Address>(unary_comp.operand)) {
-    this->emit_error(curr_token, "Expected a binary comp in C-instruction");
+    this->emit_error(curr_token,
+                     std::format("Expected an address but found `{}`",
+                                 get_stringified_token(std::get<std::size_t>(
+                                     unary_comp.operand))));
     return std::nullopt;
   }
 

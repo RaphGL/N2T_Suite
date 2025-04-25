@@ -13,10 +13,17 @@ namespace assembly {
 CodeGen::CodeGen(std::vector<Instruction> instructions, const char *filepath)
     : m_instructions{instructions}, m_reporter{filepath} {}
 
-// todo: emit errors
-std::uint16_t
-CodeGen::compile_cinstr_comp(std::variant<UnaryComp, BinaryComp> comp) {
+std::string CodeGen::get_error_report() { return m_error_report; }
+
+inline void CodeGen::emit_error(TokenCoordinate start, TokenCoordinate end,
+                                std::string_view error_msg) {
+  m_reporter.create_report(report::ReportType::Error, report::coord(start),
+                           report::coord(end), error_msg);
+}
+
+std::optional<std::uint16_t> CodeGen::compile_cinstr_comp(CInstr ctx) {
   constexpr std::uint16_t comp_mask = 0b0001111111000000;
+  const auto comp = ctx.comp;
 
   std::uint16_t inst = 0;
 
@@ -46,7 +53,9 @@ CodeGen::compile_cinstr_comp(std::variant<UnaryComp, BinaryComp> comp) {
           inst = 0b1110000;
           break;
         default:
-          // todo:emit error: invalid address
+          this->emit_error(ctx.start, ctx.end,
+                           "Invalid address. Expected A, D or M.");
+          return std::nullopt;
           break;
         }
       }
@@ -58,7 +67,10 @@ CodeGen::compile_cinstr_comp(std::variant<UnaryComp, BinaryComp> comp) {
         if (digit) {
           inst = 0b0111010;
         } else {
-          // todo: emit error: zero cannot be negated
+          this->emit_error(
+              ctx.start, ctx.end,
+              "`0` cannot be negated. No such instruction exists.");
+          return std::nullopt;
         }
       }
 
@@ -75,7 +87,10 @@ CodeGen::compile_cinstr_comp(std::variant<UnaryComp, BinaryComp> comp) {
           inst = 0b1110011;
           break;
         default:
-          // todo: emit error: invalid address or address cannot be negated
+          this->emit_error(ctx.start, ctx.end,
+                           "Invalid address. Address cannot be negated. "
+                           "Expected D, A or M.");
+          return std::nullopt;
           break;
         }
       }
@@ -83,7 +98,9 @@ CodeGen::compile_cinstr_comp(std::variant<UnaryComp, BinaryComp> comp) {
 
     case Operator::Not:
       if (std::holds_alternative<std::size_t>(unary.operand)) {
-        // todo: emit error: binary number cannot be notted
+        this->emit_error(ctx.start, ctx.end,
+                         "Notting a binary number is an invalid operation");
+        return std::nullopt;
       }
 
       if (std::holds_alternative<Address>(unary.operand)) {
@@ -99,14 +116,18 @@ CodeGen::compile_cinstr_comp(std::variant<UnaryComp, BinaryComp> comp) {
           inst = 0b1110011;
           break;
         default:
-          // todo: emit error: invalid address or address cannot be negated
+          this->emit_error(ctx.start, ctx.end,
+                           "Invalid address. Expected D, A or M.");
+          return std::nullopt;
           break;
         }
       }
       break;
 
     default:
-      // todo:emit error: invalid operator
+      this->emit_error(ctx.start, ctx.end,
+                       "Invalid operator. Expected `|`, `&`, `!`, `+` or `-`.");
+      return std::nullopt;
       break;
     }
   }
@@ -120,7 +141,9 @@ CodeGen::compile_cinstr_comp(std::variant<UnaryComp, BinaryComp> comp) {
       if (std::holds_alternative<std::size_t>(binary.right)) {
         auto digit = std::get<std::size_t>(binary.right);
         if (!digit) {
-          // todo:emit error: digit cannot be 0
+          this->emit_error(ctx.start, ctx.end,
+                           std::format("Expected `1` but found `0`", digit));
+          return std::nullopt;
         }
 
         switch (binary.left) {
@@ -134,7 +157,9 @@ CodeGen::compile_cinstr_comp(std::variant<UnaryComp, BinaryComp> comp) {
           inst = binary.op == Operator::Add ? 0b1110111 : 0b1110010;
           break;
         default:
-          // todo: emit error: invalid address
+          this->emit_error(ctx.start, ctx.end,
+                           "Invalid Address. Expected A, D or M.");
+          return std::nullopt;
           break;
         }
       }
@@ -150,7 +175,9 @@ CodeGen::compile_cinstr_comp(std::variant<UnaryComp, BinaryComp> comp) {
             inst = binary.op == Operator::Add ? 0b1000010 : 0b1010011;
             break;
           default:
-            // todo: emit error: invalid address
+            this->emit_error(ctx.start, ctx.end,
+                             "Invalid address. Expected A or M");
+            return std::nullopt;
             break;
           }
         } else if (addr == Address::D && binary.op == Operator::Sub) {
@@ -162,11 +189,15 @@ CodeGen::compile_cinstr_comp(std::variant<UnaryComp, BinaryComp> comp) {
             inst = 0b1000111;
             break;
           default:
-            // todo: emit error: invalid address
+            this->emit_error(ctx.start, ctx.end,
+                             "Invalid address. Expected A or M");
+            return std::nullopt;
             break;
           }
         } else {
-          // todo: emit error: invalid address
+          this->emit_error(ctx.start, ctx.end,
+                           "Invalid address. Expected A or M");
+          return std::nullopt;
         }
       }
       break;
@@ -175,7 +206,9 @@ CodeGen::compile_cinstr_comp(std::variant<UnaryComp, BinaryComp> comp) {
       [[fallthrough]];
     case Operator::And:
       if (binary.left != Address::D) {
-        // todo:emit error: left hand side has to be a D address
+        this->emit_error(ctx.start, ctx.end,
+                         "Invalid address. Left-hand side has to be D.");
+        return std::nullopt;
       }
 
       if (!std::holds_alternative<Address>(binary.right)) {
@@ -189,17 +222,23 @@ CodeGen::compile_cinstr_comp(std::variant<UnaryComp, BinaryComp> comp) {
           inst = binary.op == Operator::And ? 0b1000000 : 0b1010101;
           break;
         default:
-          // todo:emit error invalid address
+          this->emit_error(ctx.start, ctx.end,
+                           "Invalid address. Expected A or M");
+          return std::nullopt;
           break;
         }
       } else {
-        // todo:emit error: right hand side can only be an address
+        this->emit_error(ctx.start, ctx.end,
+                         "Right-hand has to be either A or M address.");
+        return std::nullopt;
       }
 
       break;
 
     default:
-      // todo: emit error: invalid operator
+      this->emit_error(ctx.start, ctx.end,
+                       "Invalid operator. Expected `|`, `&`, `!`, `+` or `-`.");
+      return std::nullopt;
       break;
     }
   }
@@ -207,8 +246,9 @@ CodeGen::compile_cinstr_comp(std::variant<UnaryComp, BinaryComp> comp) {
   return (inst << 6) & comp_mask;
 }
 
-std::uint16_t CodeGen::compile_cinstr_dest(Destination dest) const noexcept {
+std::uint16_t CodeGen::compile_cinstr_dest(CInstr ctx) const noexcept {
   constexpr std::uint16_t dest_mask = 0b0000000000111000;
+  const auto dest = ctx.dest;
 
   std::uint16_t inst = 0;
   switch (dest) {
@@ -240,8 +280,10 @@ std::uint16_t CodeGen::compile_cinstr_dest(Destination dest) const noexcept {
   return (inst << 3) & dest_mask;
 }
 
-std::uint16_t CodeGen::compile_cinstr_jump(Jump jump) const noexcept {
+std::uint16_t CodeGen::compile_cinstr_jump(CInstr ctx) const noexcept {
   std::uint16_t inst = 0;
+  const auto jump = ctx.jump;
+
   switch (jump) {
   case Jump::None:
     break;
@@ -271,7 +313,7 @@ std::uint16_t CodeGen::compile_cinstr_jump(Jump jump) const noexcept {
   return inst;
 }
 
-std::vector<std::uint16_t> CodeGen::compile() {
+std::optional<std::vector<std::uint16_t>> CodeGen::compile() {
   std::vector<std::uint16_t> compiled_insts{};
   std::unordered_map<const char *, std::uint16_t> pc_labels{
       {"R0", 0},   {"R1", 1},         {"R2", 2},      {"R3", 3},   {"R4", 4},
@@ -288,7 +330,7 @@ std::vector<std::uint16_t> CodeGen::compile() {
   for (const auto &inst_variant : m_instructions) {
     if (std::holds_alternative<Label>(inst_variant)) {
       auto inst = std::get<Label>(inst_variant);
-      pc_labels.emplace(inst.value, m_pc);
+      pc_labels.emplace(inst.value.c_str(), m_pc);
       --m_pc;
     }
 
@@ -297,9 +339,8 @@ std::vector<std::uint16_t> CodeGen::compile() {
       if (std::holds_alternative<std::size_t>(inst.value)) {
         auto value = std::get<std::size_t>(inst.value);
         if (value > max_label_number) {
-          m_reporter.create_report(
-              report::ReportType::Error, report::coord(inst.start_coord),
-              report::coord(inst.end_coord),
+          this->emit_error(
+              inst.start_coord, inst.end_coord,
               std::format("Label number overflows the 16-bit number. "
                           "Maximum value is `{}` but found `{}`",
                           max_label_number, value));
@@ -314,7 +355,7 @@ std::vector<std::uint16_t> CodeGen::compile() {
         auto value = std::get<std::string>(inst.value);
 
         if (!pc_labels.contains(value.c_str())) {
-          pc_labels.emplace(value, var_addr);
+          pc_labels.emplace(value.c_str(), var_addr);
           ++var_addr;
         }
 
@@ -326,14 +367,25 @@ std::vector<std::uint16_t> CodeGen::compile() {
 
     if (std::holds_alternative<CInstr>(inst_variant)) {
       auto inst = std::get<CInstr>(inst_variant);
-      std::uint16_t binary = 0b1110000000000000 |
-                             this->compile_cinstr_comp(inst.comp) |
-                             this->compile_cinstr_dest(inst.dest) |
-                             this->compile_cinstr_jump(inst.jump);
-      compiled_insts.push_back(binary);
+      if (auto comp_opt = this->compile_cinstr_comp(inst);
+          comp_opt.has_value()) {
+        auto comp = comp_opt.value();
+        std::uint16_t binary = 0b1110000000000000 | comp |
+                               this->compile_cinstr_dest(inst) |
+                               this->compile_cinstr_jump(inst);
+        compiled_insts.push_back(binary);
+      } else {
+        continue;
+      }
     }
 
     ++m_pc;
+  }
+
+  auto error_report = m_reporter.generate_final_report();
+  if (error_report.has_value()) {
+    m_error_report = error_report.value();
+    return std::nullopt;
   }
 
   return compiled_insts;

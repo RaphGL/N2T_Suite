@@ -1,3 +1,4 @@
+#include "asm/codegen.hpp"
 #include "asm/lexer.hpp"
 #include "asm/parser.hpp"
 #include "hdl/lexer.hpp"
@@ -22,7 +23,21 @@ int main() {
   assembly::Lexer lex{"test.asm"};
   auto tokens = lex.tokenize();
   assembly::Parser parser{tokens, "test.asm"};
-  auto instructions = parser.parse();
+  auto insts_opt = parser.parse();
 
-  std::cout << parser.get_error_report();
+  if (!insts_opt.has_value()) {
+    std::cout << parser.get_error_report();
+    return 1;
+  }
+
+  auto instructions = insts_opt.value();
+  assembly::CodeGen codegen{instructions, "test.asm"};
+  auto asm_output = codegen.compile();
+  if (!asm_output.has_value()) {
+    std::cout << codegen.get_error_report();
+    return 1;
+  }
+
+  auto output = asm_output.value();
+  std::cout << "success?" << '\n';
 }
