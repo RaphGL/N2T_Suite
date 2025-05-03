@@ -1,7 +1,7 @@
 #include "codegen.hpp"
 #include "../report/report.hpp"
 #include "parser.hpp"
-#include <cmath>
+#include <bitset>
 #include <cstdint>
 #include <format>
 #include <unordered_map>
@@ -19,6 +19,18 @@ inline void CodeGen::emit_error(TokenCoordinate start, TokenCoordinate end,
                                 std::string_view error_msg) {
   m_reporter.create_report(report::ReportType::Error, report::coord(start),
                            report::coord(end), error_msg);
+}
+
+std::string to_string(std::vector<std::uint16_t> asm_instructions) {
+  std::string stringed_asm{};
+
+  for (const auto inst : asm_instructions) {
+    std::bitset<16> bits{inst};
+    stringed_asm += bits.to_string();
+    stringed_asm += '\n';
+  }
+
+  return stringed_asm;
 }
 
 std::optional<std::uint16_t> CodeGen::compile_cinstr_comp(CInstr ctx) {
@@ -247,7 +259,6 @@ std::optional<std::uint16_t> CodeGen::compile_cinstr_comp(CInstr ctx) {
 }
 
 std::uint16_t CodeGen::compile_cinstr_dest(CInstr ctx) const noexcept {
-  constexpr std::uint16_t dest_mask = 0b0000000000111000;
   const auto dest = ctx.dest;
 
   std::uint16_t inst = 0;
@@ -277,7 +288,7 @@ std::uint16_t CodeGen::compile_cinstr_dest(CInstr ctx) const noexcept {
     break;
   }
 
-  return (inst << 3) & dest_mask;
+  return inst << 3;
 }
 
 std::uint16_t CodeGen::compile_cinstr_jump(CInstr ctx) const noexcept {
@@ -315,7 +326,7 @@ std::uint16_t CodeGen::compile_cinstr_jump(CInstr ctx) const noexcept {
 
 std::optional<std::vector<std::uint16_t>> CodeGen::compile() {
   std::vector<std::uint16_t> compiled_insts{};
-  std::unordered_map<const char *, std::uint16_t> pc_labels{
+  std::unordered_map<std::string, std::uint16_t> pc_labels{
       {"R0", 0},   {"R1", 1},         {"R2", 2},      {"R3", 3},   {"R4", 4},
       {"R5", 5},   {"R6", 6},         {"R7", 7},      {"R8", 8},   {"R9", 9},
       {"R10", 10}, {"R11", 01},       {"R12", 12},    {"R13", 13}, {"R14", 14},
@@ -330,7 +341,7 @@ std::optional<std::vector<std::uint16_t>> CodeGen::compile() {
   for (const auto &inst_variant : m_instructions) {
     if (std::holds_alternative<Label>(inst_variant)) {
       auto inst = std::get<Label>(inst_variant);
-      pc_labels.emplace(inst.value.c_str(), m_pc);
+      pc_labels.emplace(inst.value, m_pc);
       --m_pc;
     }
 
@@ -354,12 +365,12 @@ std::optional<std::vector<std::uint16_t>> CodeGen::compile() {
       if (std::holds_alternative<std::string>(inst.value)) {
         auto value = std::get<std::string>(inst.value);
 
-        if (!pc_labels.contains(value.c_str())) {
-          pc_labels.emplace(value.c_str(), var_addr);
+        if (!pc_labels.contains(value)) {
+          pc_labels.emplace(value, var_addr);
           ++var_addr;
         }
 
-        auto value_addr = pc_labels.at(value.c_str());
+        auto value_addr = pc_labels.at(value);
         std::uint16_t binary = 0b0111111111111111 & value_addr;
         compiled_insts.push_back(binary);
       }

@@ -28,6 +28,8 @@ public:
   std::string get_error_report();
 };
 
+std::string to_string(std::vector<std::uint16_t> asm_instructions);
+
 }; // namespace assembly
 
 #endif

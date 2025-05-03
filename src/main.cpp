@@ -40,4 +40,6 @@ int main() {
 
   auto output = asm_output.value();
   std::cout << "success?" << '\n';
+
+  std::cout << assembly::to_string(output) << '\n';
 }

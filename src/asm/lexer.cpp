@@ -169,11 +169,10 @@ void Lexer::ignore_comment() {
   }
   m_asm_file.get();
 
-  while (!m_asm_file.eof() && m_asm_file.get() != '\n') {
+  while (!m_asm_file.eof() && m_asm_file.peek() != '\n') {
+    m_asm_file.get();
+    ++m_curr_x;
   }
-
-  ++m_curr_y;
-  m_curr_x = 0;
 }
 
 }; // namespace assembly

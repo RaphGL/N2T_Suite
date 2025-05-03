@@ -76,6 +76,7 @@ std::optional<Destination> Parser::parse_dest() {
   // - M, MD
 
   if (curr_token.type == TokenType::A) {
+    dest = Destination::A;
     if (this->peek_expected(TokenType::M)) {
       this->eat();
       dest = Destination::AM;
