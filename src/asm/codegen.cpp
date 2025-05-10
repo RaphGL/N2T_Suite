@@ -342,7 +342,14 @@ std::optional<std::vector<std::uint16_t>> CodeGen::compile() {
     if (std::holds_alternative<Label>(inst_variant)) {
       auto inst = std::get<Label>(inst_variant);
       pc_labels.emplace(inst.value, m_pc);
-      --m_pc;
+      continue;
+    }
+    ++m_pc;
+  }
+
+  for (const auto &inst_variant : m_instructions) {
+    if (std::holds_alternative<Label>(inst_variant)) {
+      continue;
     }
 
     if (std::holds_alternative<AInstr>(inst_variant)) {
@@ -389,8 +396,6 @@ std::optional<std::vector<std::uint16_t>> CodeGen::compile() {
         continue;
       }
     }
-
-    ++m_pc;
   }
 
   auto error_report = m_reporter.generate_final_report();
@@ -399,6 +404,7 @@ std::optional<std::vector<std::uint16_t>> CodeGen::compile() {
     return std::nullopt;
   }
 
+  m_pc = 0;
   return compiled_insts;
 }
 
