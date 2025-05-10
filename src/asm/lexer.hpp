@@ -13,9 +13,6 @@ enum class TokenType {
   Number,
   // [A-z]|[0-9].*
   Label,
-  D,
-  A,
-  M,
   Exclamation,
   Minus,
   Plus,

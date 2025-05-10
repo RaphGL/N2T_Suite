@@ -75,32 +75,37 @@ std::optional<Destination> Parser::parse_dest() {
   // - D
   // - M, MD
 
-  if (curr_token.type == TokenType::A) {
-    dest = Destination::A;
-    if (this->peek_expected(TokenType::M)) {
-      this->eat();
+  if (curr_token.type == TokenType::Label &&
+      std::holds_alternative<std::string>(curr_token.value)) {
+    auto token_value = std::get<std::string>(curr_token.value);
+
+    if (token_value == "A") {
+      dest = Destination::A;
+    } else if (token_value == "AM") {
       dest = Destination::AM;
-
-      if (this->peek_expected(TokenType::D)) {
-        this->eat();
-        dest = Destination::AMD;
-      }
-    } else if (this->peek_expected(TokenType::D)) {
-      this->eat();
+    } else if (token_value == "AD") {
       dest = Destination::AD;
-    }
-  }
-
-  if (curr_token.type == TokenType::D) {
-    dest = Destination::D;
-  }
-
-  if (curr_token.type == TokenType::M) {
-    dest = Destination::M;
-    if (this->peek_expected(TokenType::D)) {
-      this->eat();
+    } else if (token_value == "AMD") {
+      dest = Destination::AMD;
+    } else if (token_value == "D") {
+      dest = Destination::D;
+    } else if (token_value == "M") {
+      dest = Destination::M;
+    } else if (token_value == "MD") {
       dest = Destination::MD;
+    } else {
+      this->emit_error(curr_token,
+                       std::format("Invalid destination. Expected A, M, D, AM, "
+                                   "AD, AMD, M, or MD. But found `{}`",
+                                   token_value));
+      return std::nullopt;
     }
+  } else {
+    this->emit_error(curr_token,
+                     std::format("Invalid destination. Expected A, M, D, AM, "
+                                 "AD, AMD, M, or MD. But found `{}`",
+                                 get_stringified_token(curr_token.value)));
+    return std::nullopt;
   }
 
   return dest;
@@ -114,21 +119,40 @@ std::optional<std::variant<UnaryComp, BinaryComp>> Parser::parse_comp() {
   UnaryComp unary_comp;
   unary_comp.start = curr_token.start_coord;
 
+  auto parse_single_dest =
+      [this](const Token curr,
+             TokenCoordinate &token_end) -> std::optional<Address> {
+    if (std::holds_alternative<std::string>(curr.value)) {
+      auto curr_value = std::get<std::string>(curr.value);
+      token_end = curr.end_coord;
+
+      if (curr_value == "D") {
+        return Address::D;
+      } else if (curr_value == "A") {
+        return Address::A;
+      } else if (curr_value == "M") {
+        return Address::M;
+      }
+    }
+
+    this->emit_error(curr, std::format("Expected one of the valid addresses "
+                                       "(A, M, D), but found `{}`",
+                                       get_stringified_token(curr.value)));
+    return std::nullopt;
+  };
+
   // !D, !A, !M
   if (curr_token.type == TokenType::Exclamation) {
     unary_comp.op = Operator::Not;
-    if (this->peek_expected(TokenType::D)) {
+
+    if (this->peek_expected(TokenType::Label)) {
       auto curr = this->eat().value();
-      unary_comp.end = curr.end_coord;
-      unary_comp.operand = Address::D;
-    } else if (this->peek_expected(TokenType::A)) {
-      auto curr = this->eat().value();
-      unary_comp.end = curr.end_coord;
-      unary_comp.operand = Address::A;
-    } else if (this->peek_expected(TokenType::M)) {
-      auto curr = this->eat().value();
-      unary_comp.end = curr.end_coord;
-      unary_comp.operand = Address::M;
+      auto dest = parse_single_dest(curr, unary_comp.end);
+      if (dest.has_value()) {
+        unary_comp.operand = dest.value();
+      } else {
+        return std::nullopt;
+      }
     } else {
       auto curr = this->peek();
       this->emit_error(
@@ -144,25 +168,15 @@ std::optional<std::variant<UnaryComp, BinaryComp>> Parser::parse_comp() {
   if (curr_token.type == TokenType::Minus) {
     unary_comp.op = Operator::Neg;
 
-    if (this->peek_expected(TokenType::D)) {
+    if (this->peek_expected(TokenType::Label)) {
       auto curr = this->eat().value();
-      unary_comp.end = curr.end_coord;
-      unary_comp.operand = Address::D;
-    }
-
-    if (this->peek_expected(TokenType::A)) {
-      auto curr = this->eat().value();
-      unary_comp.end = curr.end_coord;
-      unary_comp.operand = Address::A;
-    }
-
-    if (this->peek_expected(TokenType::M)) {
-      auto curr = this->eat().value();
-      unary_comp.end = curr.end_coord;
-      unary_comp.operand = Address::M;
-    }
-
-    if (this->peek_expected(TokenType::Number)) {
+      auto dest = parse_single_dest(curr, unary_comp.end);
+      if (dest.has_value()) {
+        unary_comp.operand = dest.value();
+      } else {
+        return std::nullopt;
+      }
+    } else if (this->peek_expected(TokenType::Number)) {
       auto curr = this->eat().value();
       unary_comp.end = curr.end_coord;
       if (std::holds_alternative<std::size_t>(curr.value)) {
@@ -204,22 +218,13 @@ std::optional<std::variant<UnaryComp, BinaryComp>> Parser::parse_comp() {
   }
 
   // D, A, M
-  if (curr_token.type == TokenType::D) {
-    unary_comp.op = Operator::None;
-    unary_comp.operand = Address::D;
-    unary_comp.end = curr_token.end_coord;
-  }
-
-  if (curr_token.type == TokenType::A) {
-    unary_comp.op = Operator::None;
-    unary_comp.operand = Address::A;
-    unary_comp.end = curr_token.end_coord;
-  }
-
-  if (curr_token.type == TokenType::M) {
-    unary_comp.op = Operator::None;
-    unary_comp.operand = Address::M;
-    unary_comp.end = curr_token.end_coord;
+  if (curr_token.type == TokenType::Label) {
+    auto dest = parse_single_dest(curr_token, unary_comp.end);
+    if (dest.has_value()) {
+      unary_comp.operand = dest.value();
+    } else {
+      return std::nullopt;
+    }
   }
 
   if (!this->peek_expected(TokenType::Plus) &&
@@ -289,15 +294,14 @@ std::optional<std::variant<UnaryComp, BinaryComp>> Parser::parse_comp() {
                                    get_stringified_token(curr_token.value)));
       return std::nullopt;
     }
-  } else if (this->peek_expected(TokenType::A)) {
-    this->eat();
-    binary_comp.right = Address::A;
-  } else if (this->peek_expected(TokenType::D)) {
-    this->eat();
-    binary_comp.right = Address::D;
-  } else if (this->peek_expected(TokenType::M)) {
-    this->eat();
-    binary_comp.right = Address::M;
+  } else if (this->peek_expected(TokenType::Label)) {
+    auto curr = this->eat().value();
+    auto dest = parse_single_dest(curr, binary_comp.end);
+    if (dest.has_value()) {
+      binary_comp.right = dest.value();
+    } else {
+      return std::nullopt;
+    }
   } else {
     next_token = this->peek();
     this->emit_error(

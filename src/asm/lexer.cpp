@@ -38,15 +38,6 @@ std::vector<Token> Lexer::tokenize() {
 
     auto type = TokenType::Unknown;
     switch (ch) {
-    case 'A':
-      type = TokenType::A;
-      break;
-    case 'M':
-      type = TokenType::M;
-      break;
-    case 'D':
-      type = TokenType::D;
-      break;
     case '@':
       type = TokenType::AtSymbol;
       break;
