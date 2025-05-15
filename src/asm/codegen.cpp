@@ -223,7 +223,7 @@ std::optional<std::uint16_t> CodeGen::compile_cinstr_comp(CInstr ctx) {
         return std::nullopt;
       }
 
-      if (!std::holds_alternative<Address>(binary.right)) {
+      if (std::holds_alternative<Address>(binary.right)) {
         // emit error: and can only be used with addresses
         auto addr = std::get<Address>(binary.right);
         switch (addr) {

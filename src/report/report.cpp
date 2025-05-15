@@ -26,46 +26,62 @@ void Context::create_report(ReportType type, Coord start, Coord end,
 
 std::string generate_individual_report(std::string_view filepath,
                                        std::string_view line, Report report) {
-  constexpr std::string_view error_str = "error";
-  constexpr std::string_view warning_str = "warning";
-
-  std::string_view error_type_str;
+  auto error_type_str = "";
   switch (report.type) {
-  case ReportType::Error:
-    error_type_str = error_str;
+  case report::ReportType::Error:
+    error_type_str = "error";
     break;
-  case ReportType::Warning:
-    error_type_str = warning_str;
+  case report::ReportType::Warning:
+    error_type_str = "warning";
     break;
   }
+
+  // editors are 1-indexed so we have to display this
+  auto editor_col = report.start_col + 1;
+  auto editor_row = report.start_row + 1;
 
   std::string report_str =
-      std::format("--> {} {}:{}:{}\n", error_type_str, filepath,
-                  report.start_row + 1, report.start_col + 1);
-  auto row_number = std::format("{}", report.start_row + 1);
-  std::string tab_pad{};
-  tab_pad.insert(0, 4 + row_number.length(), ' ');
-  tab_pad[1 + row_number.length()] = '|';
-  report_str += tab_pad + '\n';
-  report_str += row_number + " |  " + std::string(line) + "\n";
+      std::format("-> {} on {}:{}:{}\n", error_type_str, filepath,
+                  editor_row, editor_col);
 
-  std::string left_padding{};
-  auto aligned_padding_len = report.start_col;
-  left_padding.insert(0, aligned_padding_len - 1, ' ');
-
-  report_str += tab_pad + left_padding + '^' + '\n';
-
-  left_padding = std::string();
-  aligned_padding_len = report.start_col - report.error.length() / 2;
-  if (aligned_padding_len >= line.length()) {
-    aligned_padding_len = 0;
+  const auto rownum = std::to_string(editor_row);
+  std::string row_padding{};
+  for (std::size_t i = 0; i < rownum.size(); i++) {
+    row_padding += ' ';
   }
-  left_padding.insert(0, aligned_padding_len + row_number.length(), ' ');
 
-  report_str += tab_pad + left_padding + report.error + '\n';
-  report_str += tab_pad + "\n\n";
+  const auto empty_row = std::format(" {} | ", row_padding);
+  report_str += empty_row + '\n';
 
-  std::replace(report_str.begin(), report_str.end(), '\t', ' ');
+  // line where error occurred
+  report_str += std::format(" {} | {}\n", rownum, line);
+
+  // arrow pointing to where error occurred
+  report_str += empty_row;
+  for (std::size_t i = 0; i < report.start_col; i++) {
+    report_str += ' ';
+  }
+  report_str += '^';
+
+  if (report.end_col - report.start_col > 0) {
+    for (std::size_t i = 0; i < report.end_col - report.start_col; i++) {
+      report_str += '-';
+    }
+
+    report_str += '^';
+  }
+  report_str += '\n';
+
+  // error that occurred
+  report_str += empty_row;
+  for (std::size_t i = 0; i < report.start_col / 2; i++) {
+    report_str += ' ';
+  }
+
+  report_str += report.error + '\n';
+
+  report_str += empty_row + '\n';
+
   return report_str;
 }
 

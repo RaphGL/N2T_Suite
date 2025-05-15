@@ -103,7 +103,7 @@ Token Lexer::lex_label() {
 
   while (!m_asm_file.eof()) {
     auto ch = m_asm_file.peek();
-    if (!std::isalnum(ch) && ch != '_') {
+    if (!std::isalnum(ch) && ch != '_' && ch != '.' && ch != '$') {
       break;
     }
 
