@@ -1,6 +1,7 @@
 #include "asm/codegen.hpp"
 #include "asm/lexer.hpp"
 #include "asm/parser.hpp"
+#include "hack/hack.hpp"
 #include "hdl/lexer.hpp"
 #include "hdl/parser.hpp"
 #include <iostream>
@@ -39,7 +40,16 @@ int main() {
   }
 
   auto output = asm_output.value();
-  std::cout << "success?" << '\n';
 
-  std::cout << assembly::to_string(output) << '\n';
+  Hack hack{};
+  hack.load_rom(output);
+
+  for (;;) {
+    try {
+      hack.tick();
+    } catch (...) {
+      std::cout << "terminated\n";
+      break;
+    }
+  }
 }
