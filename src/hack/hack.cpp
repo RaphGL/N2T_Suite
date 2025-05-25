@@ -32,8 +32,8 @@ std::uint16_t &Hack::get_keyboard_mmap() { return data_mem.at(0x6000); }
 
 // Throws an exception if an invalid instruction is ever reached
 void Hack::tick() {
-  for (; pc < instruction_mem.size(); pc++) {
     auto inst = instruction_mem.at(pc);
+    ++pc;
 
     bool is_a_instruction = (inst & (1 << 15)) == 0;
     std::uint16_t a_inst_mask = 0b0111111111111111;
@@ -41,7 +41,7 @@ void Hack::tick() {
 
     if (is_a_instruction) {
       address_reg = inst & a_inst_mask;
-      continue;
+      return;
     }
 
     inst &= c_inst_mask;
@@ -82,7 +82,7 @@ void Hack::tick() {
       // D
     case 0b001100:
       if (!a) {
-        comp_result = address_reg;
+        comp_result = data_reg;
       } else {
         panic_on_invalid_instruction(inst);
       }
@@ -317,5 +317,4 @@ void Hack::tick() {
       pc = address_reg;
       break;
     }
-  }
 }
