@@ -6,6 +6,8 @@
 #include <span>
 #include <vector>
 
+using ScreenSpan = std::span<std::uint16_t, 8160>;
+
 struct Hack {
   // instruction memory
   std::array<std::uint16_t, 32768> instruction_mem{0};
@@ -23,7 +25,7 @@ struct Hack {
   bool load_rom(std::vector<uint16_t> &instructions);
 
   // retrieves a span of the memory mapped screen buffer
-  std::span<std::uint16_t, 8192> get_screen_mmap();
+  ScreenSpan get_screen_mmap();
 
   std::uint16_t &get_keyboard_mmap();
 

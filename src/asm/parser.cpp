@@ -248,7 +248,7 @@ std::optional<std::variant<UnaryComp, BinaryComp>> Parser::parse_comp() {
     return std::nullopt;
   }
 
-  BinaryComp binary_comp;
+  BinaryComp binary_comp{};
   binary_comp.start = curr_token.start_coord;
   binary_comp.left = std::get<Address>(unary_comp.operand);
   binary_comp.right = Address::None;
@@ -361,7 +361,7 @@ std::optional<Jump> Parser::parse_jump() {
 
 std::optional<CInstr> Parser::parse_cinstr() {
   auto curr_token = this->curr_token();
-  CInstr cinstr;
+  CInstr cinstr{};
   cinstr.start = curr_token.start_coord;
 
   bool has_dest = false;
@@ -440,7 +440,7 @@ std::optional<AInstr> Parser::parse_ainstr() {
   }
   auto inst_value = this->eat().value();
 
-  AInstr ainstr;
+  AInstr ainstr{};
   ainstr.start_coord = curr_token.start_coord;
   ainstr.end_coord = inst_value.end_coord;
 
@@ -454,9 +454,9 @@ std::optional<AInstr> Parser::parse_ainstr() {
 }
 
 std::optional<std::vector<Instruction>> Parser::parse() {
-  std::optional<Label> label;
-  std::optional<AInstr> ainstr;
-  std::optional<CInstr> cinstr;
+  std::optional<Label> label{std::nullopt};
+  std::optional<AInstr> ainstr{std::nullopt};
+  std::optional<CInstr> cinstr{std::nullopt};
 
   while (!this->eof()) {
     auto token = this->curr_token();

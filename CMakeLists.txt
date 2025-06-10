@@ -8,7 +8,13 @@ project(n2t_suite
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 20)
 
-if (CMAKE_BUILD_TYPE STREQUAL "")
+if(MSVC)
+  add_compile_options(/W4)
+else()
+  add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
+if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Debug)
 endif()
 
@@ -30,3 +36,11 @@ add_executable(n2t
 )
 
 target_link_libraries(n2t PUBLIC n2t_hdl n2t_report n2t_asm n2t_hack)
+
+option(USE_SDL3 "use the standalone cli suite with SDL3" OFF)
+
+if(USE_SDL3)
+  find_package(SDL3 REQUIRED CONFIG REQUIRED COMPONENTS SDL3)
+  target_link_libraries(n2t PRIVATE SDL3::SDL3)
+endif()
+

@@ -22,9 +22,9 @@ bool Hack::load_rom(std::vector<uint16_t> &instructions) {
 }
 
 // retrieves a span of the memory mapped screen buffer
-std::span<std::uint16_t, 8192> Hack::get_screen_mmap() {
-  std::span<std::uint16_t, 8192> mmap{&data_mem.at(0x4000),
-                                      &data_mem.at(0x5FFF)};
+ScreenSpan Hack::get_screen_mmap() {
+  ScreenSpan mmap{&data_mem.at(16384),
+                                      &data_mem.at(24544)};
   return mmap;
 }
 
