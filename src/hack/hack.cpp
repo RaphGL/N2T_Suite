@@ -7,9 +7,9 @@
 #include <string>
 #include <vector>
 
-static void panic_on_invalid_instruction(std::uint16_t instruction) {
+static void panic_on_invalid_instruction(std::uint16_t pc, std::uint16_t instruction) {
   auto inst_str = std::to_string(instruction);
-  throw std::format("Invalid instruction reached with value: `{}`", inst_str);
+  throw std::format("Invalid instruction reached at pc = {} with value: `{}`", pc, inst_str);
 }
 
 bool Hack::load_rom(std::vector<uint16_t> &instructions) {
@@ -57,7 +57,7 @@ void Hack::tick() {
       if (!a) {
         comp_result = 0;
       } else {
-        panic_on_invalid_instruction(inst);
+        panic_on_invalid_instruction(pc, inst);
       }
       break;
 
@@ -66,7 +66,7 @@ void Hack::tick() {
       if (!a) {
         comp_result = 1;
       } else {
-        panic_on_invalid_instruction(inst);
+        panic_on_invalid_instruction(pc, inst);
       }
       break;
 
@@ -75,7 +75,7 @@ void Hack::tick() {
       if (!a) {
         comp_result = -1;
       } else {
-        panic_on_invalid_instruction(inst);
+        panic_on_invalid_instruction(pc, inst);
       }
       break;
 
@@ -84,7 +84,7 @@ void Hack::tick() {
       if (!a) {
         comp_result = data_reg;
       } else {
-        panic_on_invalid_instruction(inst);
+        panic_on_invalid_instruction(pc, inst);
       }
       break;
 
@@ -102,7 +102,7 @@ void Hack::tick() {
       if (!a) {
         comp_result = !data_reg;
       } else {
-        panic_on_invalid_instruction(inst);
+        panic_on_invalid_instruction(pc, inst);
       }
       break;
 
@@ -120,7 +120,7 @@ void Hack::tick() {
       if (!a) {
         comp_result = -data_reg;
       } else {
-        panic_on_invalid_instruction(inst);
+        panic_on_invalid_instruction(pc, inst);
       }
       break;
 
@@ -138,7 +138,7 @@ void Hack::tick() {
       if (!a) {
         comp_result = data_reg + 1;
       } else {
-        panic_on_invalid_instruction(inst);
+        panic_on_invalid_instruction(pc, inst);
       }
       break;
 
@@ -153,10 +153,10 @@ void Hack::tick() {
 
     // D-1
     case 0b001110:
-      if (a) {
+      if (!a) {
         comp_result = data_reg - 1;
       } else {
-        panic_on_invalid_instruction(inst);
+        panic_on_invalid_instruction(pc, inst);
       }
       break;
 
@@ -215,7 +215,7 @@ void Hack::tick() {
       break;
 
     default:
-      panic_on_invalid_instruction(inst);
+      panic_on_invalid_instruction(pc, inst);
       break;
     }
 
