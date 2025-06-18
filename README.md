@@ -69,6 +69,6 @@ Distributed under the GPLv3 License. See [`LICENSE`](https://github.com/RaphGL/N
 
 I want to thank Noam Nisan, Shimon Schocken and the entire Nand2Tetris [team](https://www.nand2tetris.org/copy-of-about) for making the course and the tools.
 
-- [Nand2Tetris Java suite](https://github.com/nand2tetris/nand2tetris_simulator)
-- [Nand2Tetris Web IDE](https://github.com/nand2tetris/web-ide)
-
+- [Nand2Tetris Java suite](https://github.com/nand2tetris/nand2tetris_simulator) - the original debugger with which I originally followed the course and still think is the better version despite being a bit clunky
+- [Nand2Tetris Web IDE](https://github.com/nand2tetris/web-ide) - IDE that I've been used to check for compatibility and for debugging
+- [The Elements of Computing Systems](https://www.nand2tetris.org/book) - original books whose "appendices" section describes how the languages and OS used work
