@@ -119,13 +119,13 @@ std::optional<std::uint16_t> CodeGen::compile_cinstr_comp(CInstr ctx) {
         auto addr = std::get<Address>(unary.operand);
         switch (addr) {
         case Address::D:
-          inst = 0b0001111;
+          inst = 0b0001101;
           break;
         case Address::A:
-          inst = 0b0110011;
+          inst = 0b0110001;
           break;
         case Address::M:
-          inst = 0b1110011;
+          inst = 0b1110001;
           break;
         default:
           this->emit_error(ctx.start, ctx.end,

@@ -9,6 +9,7 @@
 #include <SDL3/SDL_init.h>
 #include <SDL3/SDL_oldnames.h>
 #include <SDL3/SDL_rect.h>
+#include <bitset>
 #include <SDL3/SDL_render.h>
 #include <cstdint>
 #include <iostream>
@@ -82,8 +83,12 @@ int main() {
 
   auto output = asm_output.value();
 
-  Hack hack{};
-  hack.load_rom(output);
+  for (auto out : output) {
+    std::cout << std::bitset<16>(out) << '\n';
+  }
+
+  // Hack hack{};
+  // hack.load_rom(output);
 
   // for (;;) {
   //   try {
@@ -94,28 +99,34 @@ int main() {
   //   }
   // }
 
-  if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
-    std::cerr << SDL_GetError() << '\n';
-    return 1;
-  }
+  // if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
+  //   std::cerr << SDL_GetError() << '\n';
+  //   return 1;
+  // }
 
-  SDL_Window *window;
-  SDL_Renderer *renderer;
-  if (!SDL_CreateWindowAndRenderer("N2T Hack Emulator", 512, 256, 0, &window,
-                                   &renderer)) {
-    std::cerr << SDL_GetError() << '\n';
-    return 1;
-  }
+  // SDL_Window *window;
+  // SDL_Renderer *renderer;
+  // if (!SDL_CreateWindowAndRenderer("N2T Hack Emulator", 512, 256, 0, &window,
+  //                                  &renderer)) {
+  //   std::cerr << SDL_GetError() << '\n';
+  //   return 1;
+  // }
 
-  for (;;) {
-    SDL_Event e{};
-    while (SDL_PollEvent(&e)) {
-      if (e.type == SDL_EVENT_QUIT) {
-        return 0;
-      }
-    }
+  // for (;;) {
+  //   SDL_Event e{};
+  //   while (SDL_PollEvent(&e)) {
+  //     if (e.type == SDL_EVENT_QUIT) {
+  //       return 0;
+  //     }
+  //   }
 
-    hack.tick();
-    draw_screen(renderer, hack.get_screen_mmap());
-  }
+  //   try {
+  //   hack.tick();
+      
+  //   } catch (std::string err) {
+  //     std::cerr << err << '\n';
+  //     return 0;
+  //   }
+  //   draw_screen(renderer, hack.get_screen_mmap());
+  // }
 }

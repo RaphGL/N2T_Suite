@@ -116,8 +116,9 @@ std::optional<std::variant<UnaryComp, BinaryComp>> Parser::parse_comp() {
 
   // unary
 
-  UnaryComp unary_comp;
+  UnaryComp unary_comp{};
   unary_comp.start = curr_token.start_coord;
+  unary_comp.op = Operator::None;
 
   auto parse_single_dest =
       [this](const Token curr,
