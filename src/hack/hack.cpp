@@ -3,7 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <format>
-#include <span>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -26,6 +26,19 @@ ScreenSpan Hack::get_screen_mmap() {
   ScreenSpan mmap{&data_mem.at(16384),
                                       &data_mem.at(24544)};
   return mmap;
+}
+
+bool Hack::load_rom(std::string_view instructions) {
+  std::vector<std::uint16_t> bin_insts{};
+  std::stringstream inststream{std::string(instructions)};
+
+  std::string tmp{};
+  while (std::getline(inststream, tmp)) {
+    auto inst = std::stoull(tmp, nullptr, 2);
+    bin_insts.push_back(inst);
+  }
+
+  return this->load_rom(bin_insts);
 }
 
 std::uint16_t &Hack::get_keyboard_mmap() { return data_mem.at(0x6000); }

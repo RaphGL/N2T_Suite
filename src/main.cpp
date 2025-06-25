@@ -11,7 +11,8 @@
 #include <SDL3/SDL_oldnames.h>
 #include <SDL3/SDL_rect.h>
 #include <SDL3/SDL_render.h>
-#include <bitset>
+#include <SDL3/SDL_video.h>
+#include <cctype>
 #include <cstdint>
 #include <filesystem>
 #include <format>
@@ -19,6 +20,7 @@
 #include <iostream>
 #include <span>
 
+// TODO: fix bugged drawing logic
 void draw_screen(SDL_Renderer *renderer, ScreenSpan screen) {
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0xFF);
   SDL_RenderClear(renderer);
@@ -67,7 +69,6 @@ int hdl_cmd(std::span<char *> args) {
   return 0;
 }
 
-// TODO add `-o` flag to allow to change destination file
 int asm_cmd(std::span<char *> args) {
   if (args.empty()) {
     std::cerr << "missing file argument.\n";
@@ -78,10 +79,13 @@ int asm_cmd(std::span<char *> args) {
   const auto file = args[0];
   std::optional<const char *> output_flag{};
 
-  if (args.size() == 3 && std::string_view(args[1]) == "-o") {
-    output_flag = args[2];
-  } else {
-    std::cerr << "invalid flag. Expected `-o <output_file>`";
+  if (args.size() >= 2) {
+    if (args.size() == 3 && std::string_view(args[1]) == "-o") {
+      output_flag = args[2];
+    } else {
+      std::cerr << "invalid flag. Expected `-o <output_file>`";
+      return 1;
+    }
   }
 
   // === assemble file ===
@@ -103,7 +107,7 @@ int asm_cmd(std::span<char *> args) {
     return 1;
   }
 
-  auto output = asm_output.value();
+  auto output = assembly::to_string(asm_output.value());
 
   // === write compiled artifact to file ===
   std::filesystem::path output_file{file};
@@ -114,11 +118,7 @@ int asm_cmd(std::span<char *> args) {
   }
 
   std::ofstream asm_file{output_file.filename()};
-  for (const auto out : output) {
-    const auto binary_str = std::bitset<16>(out).to_string() + '\n';
-    asm_file.write(binary_str.c_str(), binary_str.size());
-  }
-
+  asm_file.write(output.c_str(), output.size());
   return 0;
 }
 
@@ -128,49 +128,58 @@ int run_cmd(std::span<char *> args) {
     return 1;
   }
   const auto file = args[0];
-  std::cerr << "TODO: emulator not fully implemented yet\n";
-  // Hack hack{};
-  // hack.load_rom(output);
 
-  // for (;;) {
-  //   try {
-  //     hack.tick();
-  //   } catch (...) {
-  //     std::cout << "terminated\n";
-  //     break;
-  //   }
-  // }
+  // === load and validate ROM ===
+  std::ifstream input_stream{file};
+  std::string tmp_str{};
+  std::string input{};
+  while (std::getline(input_stream, tmp_str)) {
+    input += tmp_str + '\n';
+    for (const auto ch : tmp_str) {
+      if (!std::isdigit(ch) && !std::isspace(ch)) {
+        std::cerr << "Invalid Hack ROM. A Hack ROM should only contain 1s, 0s and whitespace.\n";
+        return 1;
+      }
+    }
+  }
 
-  // if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
-  //   std::cerr << SDL_GetError() << '\n';
-  //   return 1;
-  // }
+  Hack hack{};
+  hack.load_rom(input);
 
-  // SDL_Window *window;
-  // SDL_Renderer *renderer;
-  // if (!SDL_CreateWindowAndRenderer("N2T Hack Emulator", 512, 256, 0, &window,
-  //                                  &renderer)) {
-  //   std::cerr << SDL_GetError() << '\n';
-  //   return 1;
-  // }
+  // === Run/Emulate ===
+  if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
+    std::cerr << SDL_GetError() << '\n';
+    return 1;
+  }
 
-  // for (;;) {
-  //   SDL_Event e{};
-  //   while (SDL_PollEvent(&e)) {
-  //     if (e.type == SDL_EVENT_QUIT) {
-  //       return 0;
-  //     }
-  //   }
+  SDL_Window *window;
+  SDL_Renderer *renderer;
+  if (!SDL_CreateWindowAndRenderer("N2T Hack Emulator", 512, 256, 0, &window,
+                                   &renderer)) {
+    std::cerr << SDL_GetError() << '\n';
+    return 1;
+  }
 
-  //   try {
-  //   hack.tick();
+  for (;;) {
+    SDL_Event e{};
+    while (SDL_PollEvent(&e)) {
+      if (e.type == SDL_EVENT_QUIT) {
+        return 0;
+      }
+    }
 
-  //   } catch (std::string err) {
-  //     std::cerr << err << '\n';
-  //     return 0;
-  //   }
-  //   draw_screen(renderer, hack.get_screen_mmap());
-  // }
+    try {
+    hack.tick();
+
+    } catch (std::string err) {
+      std::cerr << err << '\n';
+      return 0;
+    }
+    draw_screen(renderer, hack.get_screen_mmap());
+  }
+
+  SDL_DestroyWindow(window);
+  SDL_DestroyRenderer(renderer);
   return 0;
 }
 

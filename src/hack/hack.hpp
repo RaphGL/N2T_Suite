@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <span>
 #include <vector>
+#include <string_view>
 
 using ScreenSpan = std::span<std::uint16_t, 8160>;
 
@@ -23,6 +24,7 @@ struct Hack {
   std::uint16_t address_reg{0}, data_reg{0};
 
   bool load_rom(std::vector<uint16_t> &instructions);
+  bool load_rom(std::string_view instructions);
 
   // retrieves a span of the memory mapped screen buffer
   ScreenSpan get_screen_mmap();
