@@ -2,20 +2,22 @@
 #include "asm/lexer.hpp"
 #include "asm/parser.hpp"
 #include "hack/hack.hpp"
-#include "hdl/lexer.hpp"
-#include "hdl/parser.hpp"
+// #include "hdl/lexer.hpp"
+// #include "hdl/parser.hpp"
+#include <SDL3/SDL.h>
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_init.h>
 #include <SDL3/SDL_oldnames.h>
 #include <SDL3/SDL_rect.h>
-#include <bitset>
 #include <SDL3/SDL_render.h>
+#include <bitset>
 #include <cstdint>
+#include <filesystem>
+#include <format>
+#include <fstream>
 #include <iostream>
-#include <variant>
-
-#include <SDL3/SDL.h>
+#include <span>
 
 void draw_screen(SDL_Renderer *renderer, ScreenSpan screen) {
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0xFF);
@@ -48,8 +50,8 @@ void draw_screen(SDL_Renderer *renderer, ScreenSpan screen) {
   SDL_RenderPresent(renderer);
 }
 
-int main() {
-
+int hdl_cmd(std::span<char *> args) {
+  std::cerr << "TODO: hdl command hasn't been implemented yet.\n";
   // hdl::Lexer tk{"test.hdl"};
   // auto tokens = tk.tokenize();
 
@@ -62,10 +64,30 @@ int main() {
 
   // auto chips = ast.value();
   // std::cout << chips[0].parts[2].name;
+  return 0;
+}
 
-  assembly::Lexer lex{"test.asm"};
+// TODO add `-o` flag to allow to change destination file
+int asm_cmd(std::span<char *> args) {
+  if (args.empty()) {
+    std::cerr << "missing file argument.\n";
+    return 1;
+  }
+
+  // === parse args ===
+  const auto file = args[0];
+  std::optional<const char *> output_flag{};
+
+  if (args.size() == 3 && std::string_view(args[1]) == "-o") {
+    output_flag = args[2];
+  } else {
+    std::cerr << "invalid flag. Expected `-o <output_file>`";
+  }
+
+  // === assemble file ===
+  assembly::Lexer lex{file};
   auto tokens = lex.tokenize();
-  assembly::Parser parser{tokens, "test.asm"};
+  assembly::Parser parser{tokens, file};
   auto insts_opt = parser.parse();
 
   if (!insts_opt.has_value()) {
@@ -74,7 +96,7 @@ int main() {
   }
 
   auto instructions = insts_opt.value();
-  assembly::CodeGen codegen{instructions, "test.asm"};
+  assembly::CodeGen codegen{instructions, file};
   auto asm_output = codegen.compile();
   if (!asm_output.has_value()) {
     std::cout << codegen.get_error_report();
@@ -83,10 +105,30 @@ int main() {
 
   auto output = asm_output.value();
 
-  for (auto out : output) {
-    std::cout << std::bitset<16>(out) << '\n';
+  // === write compiled artifact to file ===
+  std::filesystem::path output_file{file};
+  if (output_flag.has_value()) {
+    output_file = output_flag.value();
+  } else {
+    output_file.replace_extension("hack");
   }
 
+  std::ofstream asm_file{output_file.filename()};
+  for (const auto out : output) {
+    const auto binary_str = std::bitset<16>(out).to_string() + '\n';
+    asm_file.write(binary_str.c_str(), binary_str.size());
+  }
+
+  return 0;
+}
+
+int run_cmd(std::span<char *> args) {
+  if (args.empty()) {
+    std::cerr << "missing file argument.\n";
+    return 1;
+  }
+  const auto file = args[0];
+  std::cerr << "TODO: emulator not fully implemented yet\n";
   // Hack hack{};
   // hack.load_rom(output);
 
@@ -122,11 +164,60 @@ int main() {
 
   //   try {
   //   hack.tick();
-      
+
   //   } catch (std::string err) {
   //     std::cerr << err << '\n';
   //     return 0;
   //   }
   //   draw_screen(renderer, hack.get_screen_mmap());
   // }
+  return 0;
+}
+
+void print_help(const char *program) {
+  std::cout << std::format("{} - nand2tetris development suite\n"
+                           "\n"
+                           "Usage: {} <COMMAND> [FILE]\n"
+                           "\n"
+                           "Commands:\n"
+                           "\trun\tRun the hack emulator\n"
+                           "\tasm\tCompile assembly into hack instructions\n"
+                           "\thdl\tResolve hdl circuit\n"
+                           "\thelp\tPrint this message\n",
+                           program, program);
+}
+
+int main(int argc, char *argv[]) {
+  // NOTE: in the future we likely will want a ide command or just launching the
+  // GUI when no arguments are passed
+  if (argc == 1) {
+    print_help(argv[0]);
+    return 0;
+  }
+
+  const std::string_view cmd{argv[1]};
+
+  if (cmd == "help") {
+    print_help(argv[0]);
+    return 0;
+  }
+
+  std::span<char *> cmd_args{&argv[2], static_cast<size_t>(argc - 2)};
+
+  if (cmd == "asm") {
+    return asm_cmd(cmd_args);
+  }
+
+  if (cmd == "hdl") {
+    return hdl_cmd(cmd_args);
+  }
+
+  if (cmd == "run") {
+    return run_cmd(cmd_args);
+  }
+
+  std::cerr << std::format(
+      "wrong argument. check `{} help` to see what commands are available.\n",
+      argv[0]);
+  return 1;
 }
