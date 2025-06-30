@@ -13,14 +13,13 @@
 #include <SDL3/SDL_render.h>
 #include <SDL3/SDL_video.h>
 #include <cctype>
-#include <cstdint>
 #include <filesystem>
 #include <format>
 #include <fstream>
 #include <iostream>
 #include <span>
 
-// TODO: fix bugged drawing logic
+// TODO: render pixels as squares that change in size with the window
 void draw_screen(SDL_Renderer *renderer, ScreenSpan screen) {
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0xFF);
   SDL_RenderClear(renderer);
@@ -29,20 +28,16 @@ void draw_screen(SDL_Renderer *renderer, ScreenSpan screen) {
   constexpr std::size_t rows = 256 / 16;
   constexpr std::size_t cols = 512 / 16;
 
-  for (std::size_t y = 0; y < rows; y++) {
-    for (std::size_t x = 0; x < cols; x++) {
-      const std::uint16_t chunk = screen[y * 32 + x / 16];
-      if (chunk == 0xFFFF) {
-        SDL_RenderLine(renderer, x, y, x + 16, y);
-        continue;
+  for (std::size_t row = 0; row < rows; row++) {
+    for (std::size_t col = 0; col < cols; col++) {
+      auto chunk = screen[row * cols + col];
+      for (std::size_t i = 15; i != 0; i--) {
+        auto pixel = chunk & (1 << i);
+        if (pixel) {
+          SDL_RenderPoint(renderer, col + i, row);
+        }
       }
-
-      const std::uint16_t mask = x % 16;
-      const auto pixel = chunk & mask;
-      if (pixel) {
-        SDL_RenderPoint(renderer, x, y);
-      }
-    }   
+    }
   }
 
   SDL_RenderPresent(renderer);
@@ -133,7 +128,8 @@ int run_cmd(std::span<char *> args) {
     input += tmp_str + '\n';
     for (const auto ch : tmp_str) {
       if (!std::isdigit(ch) && !std::isspace(ch)) {
-        std::cerr << "Invalid Hack ROM. A Hack ROM should only contain 1s, 0s and whitespace.\n";
+        std::cerr << "Invalid Hack ROM. A Hack ROM should only contain 1s, 0s "
+                     "and whitespace.\n";
         return 1;
       }
     }
@@ -165,11 +161,11 @@ int run_cmd(std::span<char *> args) {
     }
 
     try {
-    hack.tick();
+      hack.tick();
 
     } catch (std::string err) {
       std::cerr << err << '\n';
-      return 0;
+      return 1;
     }
     draw_screen(renderer, hack.get_screen_mmap());
   }

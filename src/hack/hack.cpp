@@ -278,16 +278,12 @@ void Hack::tick() {
       break;
     }
 
+    // the negative bit is on the penultimate bit because the last bit
+    // is used to indicate whether a 16-bit number is an A-instruction
+    bool is_negative = comp_result & (1 << 14);
     switch (jump) {
     // NULL
     case 0b000:
-      break;
-
-    // JGT
-    case 0b001:
-      if (comp_result > 0) {
-        pc = address_reg;
-      }
       break;
 
     // JEQ
@@ -297,16 +293,23 @@ void Hack::tick() {
       }
       break;
 
+    // JGT
+    case 0b001:
+      if (comp_result != 0 && !is_negative) {
+        pc = address_reg;
+      }
+      break;
+
     // JGE
     case 0b11:
-      if (comp_result >= 0) {
+      if (comp_result == 0 || !is_negative) {
         pc = address_reg;
       }
       break;
 
     // JLT
     case 0b100:
-      if (comp_result < 0) {
+      if (comp_result != 0 && is_negative) {
         pc = address_reg;
       }
       break;
@@ -320,7 +323,7 @@ void Hack::tick() {
 
     // JLE
     case 0b110:
-      if (comp_result <= 0) {
+      if (comp_result == 0 || is_negative) {
         pc = address_reg;
       }
       break;
