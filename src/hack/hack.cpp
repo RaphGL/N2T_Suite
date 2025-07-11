@@ -24,7 +24,7 @@ bool Hack::load_rom(std::vector<uint16_t> &instructions) {
 // retrieves a span of the memory mapped screen buffer
 ScreenSpan Hack::get_screen_mmap() {
   ScreenSpan mmap{&data_mem.at(16384),
-                                      &data_mem.at(24544)};
+                                      &data_mem.at(24575)};
   return mmap;
 }
 
@@ -41,7 +41,7 @@ bool Hack::load_rom(std::string_view instructions) {
   return this->load_rom(bin_insts);
 }
 
-std::uint16_t &Hack::get_keyboard_mmap() { return data_mem.at(0x6000); }
+std::uint16_t &Hack::get_keyboard_mmap() { return data_mem.at(24576); }
 
 // Throws an exception if an invalid instruction is ever reached
 void Hack::tick() {

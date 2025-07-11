@@ -7,7 +7,7 @@
 #include <vector>
 #include <string_view>
 
-using ScreenSpan = std::span<std::uint16_t, 8160>;
+using ScreenSpan = std::span<std::uint16_t, 8191>;
 
 struct Hack {
   // instruction memory
@@ -18,7 +18,7 @@ struct Hack {
   // RAM:                0-0x3FFF
   // Screen Buffer MMAP: 0x4000-0x5FFF
   // Keyboard MMAP:      0x6000
-  std::array<std::uint16_t, 16384 + 8192 + 1> data_mem{0};
+  std::array<std::uint16_t, 32768> data_mem{0};
 
   std::uint16_t pc{0};
   std::uint16_t address_reg{0}, data_reg{0};

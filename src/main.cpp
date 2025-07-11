@@ -25,18 +25,27 @@ void draw_screen(SDL_Renderer *renderer, ScreenSpan screen) {
   SDL_RenderClear(renderer);
   SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
 
-  constexpr std::size_t rows = 256 / 16;
-  constexpr std::size_t cols = 512 / 16;
+  constexpr std::size_t x_max = 512 / 16;
+  std::size_t x = 0;
+  std::size_t y = 0;
 
-  for (std::size_t row = 0; row < rows; row++) {
-    for (std::size_t col = 0; col < cols; col++) {
-      auto chunk = screen[row * cols + col];
-      for (std::size_t i = 15; i != 0; i--) {
-        auto pixel = chunk & (1 << i);
+  for (auto chunk : screen) {
+    if (chunk == 0xffff) {
+      SDL_RenderLine(renderer, x * 16, y, x * 16 + 16, y);
+    } else {
+      for (std::size_t i = 0; i < 16; i++) {
+        auto pixel = chunk & (0b1000000000000000 >> i);
         if (pixel) {
-          SDL_RenderPoint(renderer, col + i, row);
+          SDL_RenderPoint(renderer, x * 16 + i, y);
         }
       }
+    }
+
+    ++x;
+
+    if (x >= x_max) {
+      x = 0;
+      ++y;
     }
   }
 
