@@ -4,10 +4,13 @@
 #include "hack/hack.hpp"
 // #include "hdl/lexer.hpp"
 // #include "hdl/parser.hpp"
+#include "backends/imgui_impl_opengl3.h"
+#include "backends/imgui_impl_sdl3.h"
+#include "imgui.h"
 #include <SDL3/SDL.h>
-#include <SDL3/SDL_pixels.h>
-#include <SDL3/SDL_render.h>
-#include <SDL3/SDL_surface.h>
+#include <SDL3/SDL_error.h>
+#include <SDL3/SDL_init.h>
+#include <SDL3/SDL_opengl.h>
 #include <SDL3/SDL_video.h>
 #include <algorithm>
 #include <cctype>
@@ -234,6 +237,90 @@ load_rom:
    return 0;
 }
 
+int gui_cmd(std::span<char *> args) {
+   if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
+      std::cerr << SDL_GetError() << '\n';
+      return 1;
+   }
+
+   SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
+   SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+
+   SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+   SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+   SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+
+   float main_scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
+
+   SDL_Window *window
+       = SDL_CreateWindow("N2T Suite", 800, 400, SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
+   if (!window) {
+      std::cerr << SDL_GetError() << '\n';
+      return 1;
+   }
+
+   SDL_GLContext gl_ctx = SDL_GL_CreateContext(window);
+   if (!gl_ctx) {
+      std::cerr << SDL_GetError() << '\n';
+      return 1;
+   }
+
+   SDL_GL_MakeCurrent(window, gl_ctx);
+   SDL_GL_SetSwapInterval(1);
+   SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+   SDL_ShowWindow(window);
+
+   IMGUI_CHECKVERSION();
+   ImGui::CreateContext();
+   auto &io = ImGui::GetIO();
+   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+   ImGui::StyleColorsDark();
+   auto &style = ImGui::GetStyle();
+   style.ScaleAllSizes(main_scale);
+   style.FontScaleDpi = main_scale;
+
+   ImGui_ImplSDL3_InitForOpenGL(window, gl_ctx);
+   ImGui_ImplOpenGL3_Init();
+
+   ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+
+   for (;;) {
+      SDL_Event e;
+      while (SDL_PollEvent(&e)) {
+         ImGui_ImplSDL3_ProcessEvent(&e);
+         if (e.type == SDL_EVENT_QUIT) {
+            goto cleanup;
+         }
+      }
+
+      ImGui_ImplOpenGL3_NewFrame();
+      ImGui_ImplSDL3_NewFrame();
+      ImGui::NewFrame();
+
+      ImGui::ShowDemoWindow();
+
+      ImGui::Render();
+      glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
+      glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w,
+          clear_color.z * clear_color.w, clear_color.w);
+      glClear(GL_COLOR_BUFFER_BIT);
+      ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+      SDL_GL_SwapWindow(window);
+   }
+
+cleanup:
+   ImGui_ImplOpenGL3_Shutdown();
+   ImGui_ImplSDL3_Shutdown();
+   ImGui::DestroyContext();
+   SDL_GL_DestroyContext(gl_ctx);
+   SDL_DestroyWindow(window);
+   SDL_Quit();
+   return 0;
+}
+
 void print_help(const char *program) {
    std::cout << std::format("{} - nand2tetris development suite\n"
                             "\n"
@@ -274,6 +361,10 @@ int main(int argc, char *argv[]) {
 
    if (cmd == "run") {
       return run_cmd(cmd_args);
+   }
+
+   if (cmd == "gui") {
+      return gui_cmd(cmd_args);
    }
 
    std::cerr << std::format(

@@ -30,17 +30,15 @@ add_subdirectory(src/hdl)
 add_subdirectory(src/report)
 add_subdirectory(src/asm)
 add_subdirectory(src/hack)
+add_subdirectory(vendor/imgui)
 
 add_executable(n2t
   src/main.cpp
 )
 
-target_link_libraries(n2t PUBLIC n2t_hdl n2t_report n2t_asm n2t_hack)
+find_package(SDL3 REQUIRED CONFIG REQUIRED COMPONENTS SDL3)
+find_package(OpenGL REQUIRED)
 
-option(USE_SDL3 "use the standalone cli suite with SDL3" OFF)
-
-if(USE_SDL3)
-  find_package(SDL3 REQUIRED CONFIG REQUIRED COMPONENTS SDL3)
-  target_link_libraries(n2t PRIVATE SDL3::SDL3)
-endif()
+target_link_libraries(n2t PRIVATE SDL3::SDL3 OpenGL::GL)
+target_link_libraries(n2t PUBLIC ImGUI n2t_hdl n2t_report n2t_asm n2t_hack)
 
