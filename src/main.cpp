@@ -128,21 +128,26 @@ int run_cmd(std::span<char *> args) {
   while (std::getline(input_stream, tmp_str)) {
     input += tmp_str + '\n';
     for (const auto ch : tmp_str) {
-      if (!std::isdigit(ch) && !std::isspace(ch)) {
-        asm_cmd(args);
-        std::filesystem::path asm_file{file};
-        auto compiled_file_path = asm_file.replace_extension("hack");
-
-        std::ifstream compiled_file{compiled_file_path};
-        if (!compiled_file.is_open()) {
-          std::cerr << "Failed to open file.\n";
-        }
-
-        std::stringstream strbuf;
-        strbuf << compiled_file.rdbuf();
-        input = strbuf.str();
-        goto load_rom;
+      if (std::isdigit(ch) || std::isspace(ch)) {
+        continue;
       }
+
+      if (asm_cmd(args) != 0) {
+        return 1;
+      }
+
+      std::filesystem::path asm_file{file};
+      auto compiled_file_path = asm_file.replace_extension("hack");
+
+      std::ifstream compiled_file{compiled_file_path};
+      if (!compiled_file.is_open()) {
+        std::cerr << "Failed to open file.\n";
+      }
+
+      std::stringstream strbuf;
+      strbuf << compiled_file.rdbuf();
+      input = strbuf.str();
+      goto load_rom;
     }
   }
 
