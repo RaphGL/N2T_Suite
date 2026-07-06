@@ -4,6 +4,7 @@
 #include <fstream>
 #include <variant>
 #include <vector>
+#include <filesystem>
 
 namespace assembly {
   
@@ -46,7 +47,8 @@ class Lexer final {
   void ignore_comment();
 
 public:
-  explicit Lexer(const char *file_path) : m_asm_file{file_path} {}
+  explicit Lexer(const std::filesystem::path filepath) : m_asm_file{filepath} {
+  }
   std::vector<Token> tokenize();
 };
 

@@ -4,8 +4,8 @@
 #include "../report/report.hpp"
 #include "lexer.hpp"
 #include "parser.hpp"
-#include <cmath>
 #include <cstdint>
+#include <filesystem>
 #include <vector>
 
 namespace assembly {
@@ -23,7 +23,8 @@ class CodeGen {
                          std::string_view error_msg);
 
 public:
-  explicit CodeGen(std::vector<Instruction> instructions, const char *filepath);
+  explicit CodeGen(std::vector<Instruction> instructions,
+                   std::filesystem::path filepath);
   std::optional<std::vector<std::uint16_t>> compile();
   std::string get_error_report();
 };

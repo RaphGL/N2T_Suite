@@ -6,6 +6,9 @@
 // #include "hdl/parser.hpp"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_pixels.h>
+#include <SDL3/SDL_render.h>
+#include <SDL3/SDL_surface.h>
+#include <SDL3/SDL_video.h>
 #include <algorithm>
 #include <cctype>
 #include <chrono>
@@ -16,6 +19,7 @@
 #include <span>
 
 namespace chrono = std::chrono;
+namespace fs = std::filesystem;
 
 void draw_screen(SDL_Renderer *renderer, SDL_Texture *texture,
                  ScreenSpan screen) {
@@ -63,7 +67,10 @@ int asm_cmd(std::span<char *> args) {
   }
 
   // === parse args ===
-  const auto file = args[0];
+  const fs::path file = args[0];
+  if (!fs::exists(file)) {
+    std::cerr << "File does not exist.\n";
+  }
   std::optional<const char *> output_flag{};
 
   if (args.size() >= 2) {
@@ -102,7 +109,7 @@ int asm_cmd(std::span<char *> args) {
   auto output = assembly::to_string(asm_output.value());
 
   // === write compiled artifact to file ===
-  std::filesystem::path output_file{file};
+  fs::path output_file{file};
   if (output_flag.has_value()) {
     output_file = output_flag.value();
   } else {
@@ -119,7 +126,12 @@ int run_cmd(std::span<char *> args) {
     std::cerr << "missing file argument.\n";
     return 1;
   }
-  const auto file = args[0];
+
+  const fs::path file = args[0];
+  if (!fs::exists(file)) {
+    std::cerr << "File does not exist.\n";
+    return 1;
+  }
 
   // === load and validate ROM ===
   std::ifstream input_stream{file};
@@ -136,10 +148,9 @@ int run_cmd(std::span<char *> args) {
         return 1;
       }
 
-      std::filesystem::path asm_file{file};
-      auto compiled_file_path = asm_file.replace_extension("hack");
+      auto compiled_filepath = fs::path(file).replace_extension("hack");
 
-      std::ifstream compiled_file{compiled_file_path};
+      std::ifstream compiled_file{compiled_filepath};
       if (!compiled_file.is_open()) {
         std::cerr << "Failed to open file.\n";
       }
@@ -163,15 +174,18 @@ load_rom:
 
   SDL_Window *window;
   SDL_Renderer *renderer;
-  if (!SDL_CreateWindowAndRenderer("N2T Hack Emulator", 512, 256, 0, &window,
-                                   &renderer)) {
+  if (!SDL_CreateWindowAndRenderer("N2T Hack Emulator", 512, 256,
+                                   SDL_WINDOW_RESIZABLE, &window, &renderer)) {
     std::cerr << SDL_GetError() << '\n';
     return 1;
   }
+  constexpr float aspect_ratio = 512.0f / 256;
+  SDL_SetWindowAspectRatio(window, aspect_ratio, aspect_ratio);
 
   auto &keyboard_input = hack.get_keyboard_mmap();
   auto texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888,
                                    SDL_TEXTUREACCESS_STREAMING, 512, 256);
+  SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
 
   constexpr int ticks_per_frame = 1000000 / 16.6;
 

@@ -58,7 +58,7 @@ class Lexer final {
   void ignore_multiline_comment();
 
 public:
-  explicit Lexer(const char *file_path);
+  explicit Lexer(const char *filepath);
   std::vector<Token> tokenize();
 };
 

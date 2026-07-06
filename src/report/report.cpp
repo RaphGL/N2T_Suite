@@ -1,5 +1,6 @@
 #include "report.hpp"
 #include <algorithm>
+#include <filesystem>
 #include <format>
 #include <fstream>
 #include <optional>
@@ -7,7 +8,7 @@
 
 namespace report {
 
-Context::Context(const char *filepath)
+Context::Context(const std::filesystem::path filepath)
     : m_file{filepath}, m_filepath{filepath} {}
 
 void Context::create_report(ReportType type, Coord start, Coord end,
@@ -24,7 +25,7 @@ void Context::create_report(ReportType type, Coord start, Coord end,
   m_reports.push_back(rep);
 }
 
-std::string generate_individual_report(std::string_view filepath,
+std::string generate_individual_report(std::filesystem::path filepath,
                                        std::string_view line, Report report) {
   auto error_type_str = "";
   switch (report.type) {
@@ -41,7 +42,7 @@ std::string generate_individual_report(std::string_view filepath,
   auto editor_row = report.start_row + 1;
 
   std::string report_str =
-      std::format("-> {} on {}:{}:{}\n", error_type_str, filepath,
+      std::format("-> {} on {}:{}:{}\n", error_type_str, filepath.c_str(),
                   editor_row, editor_col);
 
   const auto rownum = std::to_string(editor_row);

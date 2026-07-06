@@ -1,6 +1,7 @@
 #ifndef REPORT_REPORT_HPP
 #define REPORT_REPORT_HPP
 
+#include <filesystem>
 #include <fstream>
 #include <optional>
 #include <vector>
@@ -37,10 +38,10 @@ struct Report {
 class Context final {
   std::ifstream m_file;
   std::vector<Report> m_reports;
-  std::string m_filepath;
+  std::filesystem::path m_filepath;
 
 public:
-  explicit Context(const char *filepath);
+  explicit Context(const std::filesystem::path filepath);
   void create_report(ReportType type, Coord start, Coord end,
                      std::string_view error_msg);
 

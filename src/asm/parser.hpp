@@ -13,7 +13,7 @@ struct AInstr {
 };
 
 enum class Operator {
-  None, 
+  None,
 
   // unary
   Neg,
@@ -27,7 +27,7 @@ enum class Operator {
 };
 
 enum class Address {
-  None, 
+  None,
   A,
   D,
   M,

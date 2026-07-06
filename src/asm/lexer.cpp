@@ -1,7 +1,6 @@
 #include "lexer.hpp"
 #include <cctype>
 #include <fstream>
-#include <optional>
 #include <stdexcept>
 #include <vector>
 

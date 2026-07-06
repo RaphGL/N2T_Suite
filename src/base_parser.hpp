@@ -2,6 +2,7 @@
 #define BASE_PARSER_HPP
 
 #include "report/report.hpp"
+#include <filesystem>
 #include <optional>
 #include <string>
 #include <vector>
@@ -23,12 +24,13 @@ protected:
 
 public:
   std::string get_error_report() const;
-  explicit BaseParser(std::vector<Token> tokens, const char *filepath);
+  explicit BaseParser(std::vector<Token> tokens,
+                      const std::filesystem::path filepath);
 };
 
 template <typename Token, typename TokenType>
 BaseParser<Token, TokenType>::BaseParser(std::vector<Token> tokens,
-                                         const char *filepath)
+                                         const std::filesystem::path filepath)
     : m_tokens{tokens}, m_reporter{filepath} {}
 
 template <typename Token, typename TokenType>
@@ -36,7 +38,7 @@ bool BaseParser<Token, TokenType>::eof() const {
   return m_idx >= m_tokens.size();
 }
 
-template<typename Token, typename TokenType> 
+template <typename Token, typename TokenType>
 Token BaseParser<Token, TokenType>::curr_token() const {
   return m_tokens.at(m_idx);
 }

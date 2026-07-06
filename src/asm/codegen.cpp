@@ -3,6 +3,7 @@
 #include "parser.hpp"
 #include <bitset>
 #include <cstdint>
+#include <filesystem>
 #include <format>
 #include <unordered_map>
 #include <variant>
@@ -10,7 +11,7 @@
 
 namespace assembly {
 
-CodeGen::CodeGen(std::vector<Instruction> instructions, const char *filepath)
+CodeGen::CodeGen(std::vector<Instruction> instructions, std::filesystem::path filepath)
     : m_instructions{instructions}, m_reporter{filepath} {}
 
 std::string CodeGen::get_error_report() { return m_error_report; }
