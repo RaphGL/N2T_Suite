@@ -9,43 +9,42 @@
 namespace report {
 
 struct Coord {
-  std::size_t col, row;
+   std::size_t col, row;
 };
 
 template <typename T>
 concept convertible_to_report_coord = requires(T a) {
-  std::is_integral<T>();
-  { a.col };
-  { a.row };
+   std::is_integral<T>();
+   { a.col };
+   { a.row };
 };
 
 Coord coord(convertible_to_report_coord auto foreign_coord) {
-  return Coord{
+   return Coord {
       .col = foreign_coord.col,
       .row = foreign_coord.row,
-  };
+   };
 }
 
 enum class ReportType { Error, Warning };
 
 struct Report {
-  std::size_t start_col, end_col;
-  std::size_t start_row, end_row;
-  std::string error;
-  ReportType type;
+   std::size_t start_col, end_col;
+   std::size_t start_row, end_row;
+   std::string error;
+   ReportType type;
 };
 
 class Context final {
-  std::ifstream m_file;
-  std::vector<Report> m_reports;
-  std::filesystem::path m_filepath;
+   std::ifstream m_file;
+   std::vector<Report> m_reports;
+   std::filesystem::path m_filepath;
 
-public:
-  explicit Context(const std::filesystem::path filepath);
-  void create_report(ReportType type, Coord start, Coord end,
-                     std::string_view error_msg);
+   public:
+   explicit Context(const std::filesystem::path filepath);
+   void create_report(ReportType type, Coord start, Coord end, std::string_view error_msg);
 
-  std::optional<std::string> generate_final_report();
+   std::optional<std::string> generate_final_report();
 };
 
 }; // namespace report
