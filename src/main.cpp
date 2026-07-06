@@ -79,7 +79,8 @@ int asm_cmd(std::span<char *> args) {
   assembly::Lexer lex{file};
   auto tokens = lex.tokenize();
   if (tokens.size() == 0) {
-    std::cerr << "Failed to tokenize file. File is possibly not a valid assembly file.\n";
+    std::cerr << "Failed to tokenize file. File is possibly not a valid "
+                 "assembly file.\n";
     return 1;
   }
   assembly::Parser parser{tokens, file};
@@ -128,13 +129,24 @@ int run_cmd(std::span<char *> args) {
     input += tmp_str + '\n';
     for (const auto ch : tmp_str) {
       if (!std::isdigit(ch) && !std::isspace(ch)) {
-        std::cerr << "Invalid Hack ROM. A Hack ROM should only contain 1s, 0s "
-                     "and whitespace.\n";
-        return 1;
+        asm_cmd(args);
+        std::filesystem::path asm_file{file};
+        auto compiled_file_path = asm_file.replace_extension("hack");
+
+        std::ifstream compiled_file{compiled_file_path};
+        if (!compiled_file.is_open()) {
+          std::cerr << "Failed to open file.\n";
+        }
+
+        std::stringstream strbuf;
+        strbuf << compiled_file.rdbuf();
+        input = strbuf.str();
+        goto load_rom;
       }
     }
   }
 
+load_rom:
   Hack hack{};
   hack.load_rom(input);
 
