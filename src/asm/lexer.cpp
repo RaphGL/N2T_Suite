@@ -1,6 +1,8 @@
 #include "lexer.hpp"
 #include <cctype>
 #include <fstream>
+#include <optional>
+#include <stdexcept>
 #include <vector>
 
 namespace assembly {
@@ -16,10 +18,18 @@ std::vector<Token> Lexer::tokenize() {
     if (std::isspace(ch)) {
       if (ch == '\n') {
         Token newline{
-          .type = TokenType::Newline,
-          .start_coord = { .row = m_curr_y, .col = m_curr_x,},
-          .end_coord = { .row = m_curr_y, .col = m_curr_x,},
-          .value = ch,
+            .type = TokenType::Newline,
+            .start_coord =
+                {
+                    .row = m_curr_y,
+                    .col = m_curr_x,
+                },
+            .end_coord =
+                {
+                    .row = m_curr_y,
+                    .col = m_curr_x,
+                },
+            .value = ch,
         };
         m_tokens.push_back(newline);
 
@@ -144,7 +154,17 @@ Token Lexer::lex_number() {
       .col = m_curr_x,
   };
 
-  int num{std::stoi(numstr)};
+  int num;
+  try {
+    num = std::stoi(numstr);
+  } catch (std::out_of_range) {
+    return Token{
+        .type = TokenType::Unknown,
+        .start_coord = start,
+        .end_coord = end,
+        .value = 0,
+    };
+  }
 
   return Token{
       .type = TokenType::Number,

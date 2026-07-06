@@ -78,11 +78,15 @@ int asm_cmd(std::span<char *> args) {
   // === assemble file ===
   assembly::Lexer lex{file};
   auto tokens = lex.tokenize();
+  if (tokens.size() == 0) {
+    std::cerr << "Failed to tokenize file. File is possibly not a valid assembly file.\n";
+    return 1;
+  }
   assembly::Parser parser{tokens, file};
   auto insts_opt = parser.parse();
 
   if (!insts_opt.has_value()) {
-    std::cout << parser.get_error_report();
+    std::cerr << parser.get_error_report();
     return 1;
   }
 
@@ -90,7 +94,7 @@ int asm_cmd(std::span<char *> args) {
   assembly::CodeGen codegen{instructions, file};
   auto asm_output = codegen.compile();
   if (!asm_output.has_value()) {
-    std::cout << codegen.get_error_report();
+    std::cerr << codegen.get_error_report();
     return 1;
   }
 
