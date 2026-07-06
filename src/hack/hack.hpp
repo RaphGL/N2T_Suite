@@ -1,13 +1,16 @@
 #ifndef HACK_HPP
 #define HACK_HPP
 
+#include <SDL3/SDL.h>
 #include <array>
 #include <cstdint>
 #include <span>
-#include <vector>
 #include <string_view>
+#include <vector>
 
-using ScreenSpan = std::span<std::uint16_t, 8191>;
+using ScreenSpan = std::span<std::uint16_t, 8192>;
+
+std::uint16_t convert_input_to_hack(SDL_Keycode key);
 
 struct Hack {
   // instruction memory

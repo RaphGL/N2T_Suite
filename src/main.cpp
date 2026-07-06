@@ -5,21 +5,16 @@
 // #include "hdl/lexer.hpp"
 // #include "hdl/parser.hpp"
 #include <SDL3/SDL.h>
-#include <SDL3/SDL_error.h>
-#include <SDL3/SDL_events.h>
-#include <SDL3/SDL_init.h>
-#include <SDL3/SDL_oldnames.h>
-#include <SDL3/SDL_rect.h>
-#include <SDL3/SDL_render.h>
-#include <SDL3/SDL_video.h>
 #include <cctype>
+#include <chrono>
 #include <filesystem>
 #include <format>
 #include <fstream>
 #include <iostream>
 #include <span>
 
-// TODO: render pixels as squares that change in size with the window
+namespace chrono = std::chrono;
+
 void draw_screen(SDL_Renderer *renderer, ScreenSpan screen) {
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0xFF);
   SDL_RenderClear(renderer);
@@ -34,7 +29,7 @@ void draw_screen(SDL_Renderer *renderer, ScreenSpan screen) {
       SDL_RenderLine(renderer, x * 16, y, x * 16 + 16, y);
     } else {
       for (std::size_t i = 0; i < 16; i++) {
-        auto pixel = chunk & (0b1000000000000000 >> i);
+        auto pixel = chunk & (1 << i);
         if (pixel) {
           SDL_RenderPoint(renderer, x * 16 + i, y);
         }
@@ -161,20 +156,41 @@ int run_cmd(std::span<char *> args) {
     return 1;
   }
 
+  auto &keyboard_input = hack.get_keyboard_mmap();
+
+  constexpr int ticks_per_frame = 1000000 / 16.6;
+
   for (;;) {
+    auto frame_start = chrono::high_resolution_clock::now();
+
     SDL_Event e{};
     while (SDL_PollEvent(&e)) {
-      if (e.type == SDL_EVENT_QUIT) {
+      switch (e.type) {
+      case SDL_EVENT_KEY_DOWN:
+        keyboard_input = convert_input_to_hack(e.key.key);
+        break;
+      case SDL_EVENT_KEY_UP:
+        keyboard_input = 0;
+        break;
+      case SDL_EVENT_QUIT:
         return 0;
       }
     }
 
-    try {
-      hack.tick();
+    for (std::size_t i = 0; i < ticks_per_frame; i++) {
+      try {
+        hack.tick();
+      } catch (std::string err) {
+        std::cerr << err << '\n';
+        return 1;
+      }
+    }
 
-    } catch (std::string err) {
-      std::cerr << err << '\n';
-      return 1;
+    float frame_end = 0.0f;
+    while (frame_end < 16.0f) {
+      frame_end = chrono::duration_cast<chrono::milliseconds>(
+                      chrono::high_resolution_clock::now() - frame_start)
+                      .count();
     }
     draw_screen(renderer, hack.get_screen_mmap());
   }
