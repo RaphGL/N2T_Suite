@@ -84,7 +84,7 @@ int asm_cmd(std::span<char *> args) {
    // === assemble file ===
    assembly::Lexer lex { file };
    auto tokens = lex.tokenize();
-   if (tokens.size() == 0) {
+   if (tokens.empty()) {
       std::cerr << "Failed to tokenize file. File is possibly not a valid "
                    "assembly file.\n";
       return 1;
@@ -162,6 +162,11 @@ int run_cmd(std::span<char *> args) {
    }
 
 load_rom:
+   if (input.empty()) {
+      std::cout << "The hack ROM is empty.\n";
+      return 1;
+   }
+
    Hack hack { };
    hack.load_rom(input);
 
@@ -174,7 +179,7 @@ load_rom:
    SDL_Window *window;
    SDL_Renderer *renderer;
    if (!SDL_CreateWindowAndRenderer(
-           "N2T Hack Emulator", 512, 256, SDL_WINDOW_RESIZABLE, &window, &renderer)) {
+           "N2T Hack Emulator", 800, 400, SDL_WINDOW_RESIZABLE, &window, &renderer)) {
       std::cerr << SDL_GetError() << '\n';
       return 1;
    }

@@ -83,7 +83,7 @@ std::vector<Token> Lexer::tokenize() {
       Token tok { type, token_coord, token_coord, ch };
 
       if (type == TokenType::Unknown) {
-         if (std::isalpha(ch)) {
+         if (std::isalpha(ch) || ch == '_' || ch == '.' || ch == '$') {
             tok = this->lex_label();
          }
 
@@ -96,7 +96,6 @@ std::vector<Token> Lexer::tokenize() {
       ++m_curr_x;
    }
 
-   auto tok = m_tokens.back();
    return m_tokens;
 }
 
