@@ -5,6 +5,8 @@
 // #include "hdl/lexer.hpp"
 // #include "hdl/parser.hpp"
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_pixels.h>
+#include <algorithm>
 #include <cctype>
 #include <chrono>
 #include <filesystem>
@@ -15,35 +17,25 @@
 
 namespace chrono = std::chrono;
 
-void draw_screen(SDL_Renderer *renderer, ScreenSpan screen) {
-  SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0xFF);
-  SDL_RenderClear(renderer);
-  SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
+void draw_screen(SDL_Renderer *renderer, SDL_Texture *texture,
+                 ScreenSpan screen) {
+  std::array<Uint32, 512 * 256> pixels;
+  std::fill(pixels.begin(), pixels.end(), 0x000000FF);
 
-  constexpr std::size_t x_max = 512 / 16;
-  std::size_t x = 0;
-  std::size_t y = 0;
-
-  for (auto chunk : screen) {
-    if (chunk == 0xffff) {
-      SDL_RenderLine(renderer, x * 16, y, x * 16 + 16, y);
-    } else {
-      for (std::size_t i = 0; i < 16; i++) {
-        auto pixel = chunk & (1 << i);
-        if (pixel) {
-          SDL_RenderPoint(renderer, x * 16 + i, y);
+  for (std::size_t y = 0; y < 256; ++y) {
+    for (std::size_t x_chunk = 0; x_chunk < 32; ++x_chunk) {
+      std::uint16_t chunk = screen[y * 32 + x_chunk];
+      for (std::size_t i = 0; i < 16; ++i) {
+        if (chunk & (1 << i)) {
+          pixels.at(y * 512 + (x_chunk * 16 + i)) = 0xFFFFFFFF;
         }
       }
     }
-
-    ++x;
-
-    if (x >= x_max) {
-      x = 0;
-      ++y;
-    }
   }
 
+  SDL_UpdateTexture(texture, nullptr, pixels.data(), 512 * sizeof(Uint32));
+  SDL_RenderClear(renderer);
+  SDL_RenderTexture(renderer, texture, nullptr, nullptr);
   SDL_RenderPresent(renderer);
 }
 
@@ -157,6 +149,8 @@ int run_cmd(std::span<char *> args) {
   }
 
   auto &keyboard_input = hack.get_keyboard_mmap();
+  auto texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888,
+                                   SDL_TEXTUREACCESS_STREAMING, 512, 256);
 
   constexpr int ticks_per_frame = 1000000 / 16.6;
 
@@ -192,9 +186,10 @@ int run_cmd(std::span<char *> args) {
                       chrono::high_resolution_clock::now() - frame_start)
                       .count();
     }
-    draw_screen(renderer, hack.get_screen_mmap());
+    draw_screen(renderer, texture, hack.get_screen_mmap());
   }
 
+  SDL_DestroyTexture(texture);
   SDL_DestroyWindow(window);
   SDL_DestroyRenderer(renderer);
   return 0;
