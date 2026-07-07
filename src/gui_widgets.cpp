@@ -39,8 +39,9 @@ GuiContext::GuiContext(SDL_Window *window)
    }
 
    _hack_worker = std::jthread([this](std::stop_token token) {
-      auto frame_start = chrono::high_resolution_clock::now();
+      constexpr int ticks_per_frame = 1400000 / 60;
       while (!token.stop_requested()) {
+         auto frame_start = chrono::high_resolution_clock::now();
          switch (_hack_state) {
          case HackState::Stopped:
             std::this_thread::sleep_for(chrono::milliseconds(30));
@@ -55,7 +56,9 @@ GuiContext::GuiContext(SDL_Window *window)
                keyboard_mem = 0;
             }
 
-            _hack.tick();
+            for (int i = 0; i < ticks_per_frame * _hack_speed; i++) {
+               _hack.tick();
+            }
          } break;
 
          case HackState::StepThrough:
@@ -70,11 +73,10 @@ GuiContext::GuiContext(SDL_Window *window)
             break;
          }
 
-         float frame_end = 0.0f;
-         while (frame_end < 16.0f) {
+         auto frame_end = chrono::milliseconds(0);
+         while (frame_end < chrono::milliseconds(16)) {
             frame_end = chrono::duration_cast<chrono::milliseconds>(
-                chrono::high_resolution_clock::now() - frame_start)
-                            .count();
+                chrono::high_resolution_clock::now() - frame_start);
          }
       }
    });
@@ -185,12 +187,11 @@ void GuiContext::show_top_bar() {
 
       ImGui::SameLine();
       ImGui::Text("CPU Speed:");
-      static float cpu_speed = 1;
       ImGui::SameLine();
       ImGui::SetNextItemWidth(100);
-      if (ImGui::SliderFloat("##program-speed", &cpu_speed, 0.5f, 2.0f, "%.1f")) {
+      if (ImGui::SliderFloat("##program-speed", &_hack_speed, 0.5f, 2.0f, "%.1f")) {
          constexpr float step = 0.1f;
-         cpu_speed = std::round(cpu_speed / step) * step;
+         _hack_speed = std::round(_hack_speed / step) * step;
       }
    }
    ImGui::EndChild();
@@ -363,9 +364,6 @@ void GuiContext::show_hack_screen() {
 
    ImGui::PopStyleVar();
    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + padding_x);
-   ImGui::Button("Enable Keyboard");
-   ImGui::SameLine();
-   ImGui::Text("Input: TODO");
    ImGui::Dummy(ImVec2(0, 10));
 }
 

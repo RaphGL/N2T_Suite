@@ -32,6 +32,8 @@ class GuiContext final {
    Hack _hack { };
    std::atomic<HackState> _hack_state = HackState::Stopped;
    std::atomic<std::optional<SDL_Keycode>> _hack_key;
+   // how fast the processor runs
+   float _hack_speed = 1.0f;
    std::jthread _hack_worker;
 
    // ==== DIALOG API
