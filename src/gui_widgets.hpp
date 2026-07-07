@@ -2,8 +2,8 @@
 #define GUI_WIDGETS_CPP
 
 #include "hack/hack.hpp"
-#include <SDL3/SDL_opengl.h>
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_opengl.h>
 #include <filesystem>
 #include <mutex>
 #include <optional>
@@ -18,13 +18,21 @@ enum class MemoryViewType : int {
    RAM = 1,
 };
 
+enum class HackState {
+   Running,
+   Stopped,
+   StepThrough,
+   Reset,
+};
+
 class GuiContext final {
    SDL_Window *_window;
    GLuint _hack_screen_tex = -1;
 
    Hack _hack { };
-   std::string _program = "";
-   std::string _script = "";
+   std::atomic<HackState> _hack_state = HackState::Stopped;
+   std::atomic<std::optional<SDL_Keycode>> _hack_key;
+   std::jthread _hack_worker;
 
    // ==== DIALOG API
    std::optional<fs::path> _dialog_path = std::nullopt;
@@ -43,6 +51,7 @@ class GuiContext final {
    ~GuiContext();
 
    void set_styling();
+   void set_keyboard_input(std::optional<SDL_Keycode> key);
    void load_program();
 
    // ==== Widgets API

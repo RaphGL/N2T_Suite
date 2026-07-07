@@ -1,11 +1,13 @@
 #include "gui_widgets.hpp"
 #include "hack/hack.hpp"
 #include "imgui.h"
+#include <SDL3/SDL_events.h>
 #include <SDL3/SDL_opengl.h>
 #include <SDL3/SDL_render.h>
 #include <SDL3/SDL_video.h>
 #include <array>
 
+#include <atomic>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
@@ -18,6 +20,7 @@
 #include <thread>
 
 namespace fs = std::filesystem;
+namespace chrono = std::chrono;
 
 namespace gui {
 
@@ -34,6 +37,47 @@ GuiContext::GuiContext(SDL_Window *window)
 
       glBindTexture(GL_TEXTURE_2D, 0);
    }
+
+   _hack_worker = std::jthread([this](std::stop_token token) {
+      auto frame_start = chrono::high_resolution_clock::now();
+      while (!token.stop_requested()) {
+         switch (_hack_state) {
+         case HackState::Stopped:
+            std::this_thread::sleep_for(chrono::milliseconds(30));
+            break;
+
+         case HackState::Running: {
+            auto key = _hack_key.load(std::memory_order_seq_cst);
+            auto &keyboard_mem = _hack.get_keyboard_mmap();
+            if (key.has_value()) {
+               keyboard_mem = convert_input_to_hack(key.value());
+            } else {
+               keyboard_mem = 0;
+            }
+
+            _hack.tick();
+         } break;
+
+         case HackState::StepThrough:
+            _hack.tick();
+            _hack_state = HackState::Stopped;
+            std::this_thread::sleep_for(chrono::milliseconds(30));
+            break;
+
+         case HackState::Reset:
+            _hack.pc = 0;
+            _hack_state = HackState::Stopped;
+            break;
+         }
+
+         float frame_end = 0.0f;
+         while (frame_end < 16.0f) {
+            frame_end = chrono::duration_cast<chrono::milliseconds>(
+                chrono::high_resolution_clock::now() - frame_start)
+                            .count();
+         }
+      }
+   });
 
    _dialog_worker = std::jthread([this](std::stop_token token) {
       while (!token.stop_requested()) {
@@ -60,6 +104,8 @@ GuiContext::GuiContext(SDL_Window *window)
 }
 
 GuiContext::~GuiContext() { glDeleteTextures(1, &_hack_screen_tex); }
+
+void GuiContext::set_keyboard_input(std::optional<SDL_Keycode> key) { _hack_key = key; }
 
 void GuiContext::set_styling() {
    const char *default_font_path =
@@ -119,13 +165,21 @@ void GuiContext::show_top_bar() {
          load_program();
       }
       ImGui::SameLine();
-      ImGui::Button("Single Step");
+      if (ImGui::Button("Single Step")) {
+         _hack_state = HackState::StepThrough;
+      }
       ImGui::SameLine();
-      ImGui::Button("Run");
+      if (ImGui::Button("Run")) {
+         _hack_state = HackState::Running;
+      }
       ImGui::SameLine();
-      ImGui::Button("Stop");
+      if (ImGui::Button("Stop")) {
+         _hack_state = HackState::Stopped;
+      }
       ImGui::SameLine();
-      ImGui::Button("Reset");
+      if (ImGui::Button("Reset")) {
+         _hack_state = HackState::Reset;
+      }
       ImGui::SameLine();
       ImGui::Button("Load Script");
 
@@ -138,9 +192,8 @@ void GuiContext::show_top_bar() {
          constexpr float step = 0.1f;
          cpu_speed = std::round(cpu_speed / step) * step;
       }
-
-      ImGui::EndChild();
    }
+   ImGui::EndChild();
    ImGui::EndGroup();
 }
 
@@ -194,6 +247,7 @@ void GuiContext::show_memory_view(MemoryViewType type) {
          "hexademical",
       };
       ImGui::SameLine();
+      ImGui::SetNextItemWidth(-FLT_MIN);
       if (ImGui::BeginCombo(
               "##view-options", view_options.at(curr_view_opt.at(static_cast<int>(type))).data())) {
          std::size_t start_idx = type == MemoryViewType::RAM ? 1 : 0;
@@ -210,11 +264,11 @@ void GuiContext::show_memory_view(MemoryViewType type) {
 
          ImGui::EndCombo();
       }
-      ImGui::EndGroup();
       ImGui::PopID();
+      ImGui::EndGroup();
 
       if (ImGui::BeginTable(label.data(), 2, ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersOuter,
-              ImVec2(0, 300))) {
+              ImVec2(0, 350))) {
          ImGui::TableSetupColumn("##address", ImGuiTableColumnFlags_WidthFixed, 50);
          ImGui::TableSetupColumn("##memory-contents", ImGuiTableColumnFlags_WidthStretch);
 
@@ -290,22 +344,23 @@ void GuiContext::show_hack_screen() {
    glBindTexture(GL_TEXTURE_2D, _hack_screen_tex);
    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 512, 256, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
 
-   ImGui::Dummy(ImVec2(0, 10));
-   ImVec2 screen_size { 512.0f * 1.3, 256.0f * 1.3 };
+   ImVec2 screen_size = ImVec2(0, 0);
    ImVec2 avail_size = ImGui::GetContentRegionAvail();
+   screen_size.x = avail_size.x;
+   screen_size.y = avail_size.y * 0.6f;
 
    float padding_x = (avail_size.x - screen_size.x) / 2;
    if (padding_x > 0.0f) {
       ImGui::SetCursorPosX(ImGui::GetCursorPosX() + padding_x);
    }
    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(2, 2));
+
    if (ImGui::BeginChild(
            "##hack-screen", ImVec2(screen_size.x, screen_size.y + 5), ImGuiChildFlags_Borders)) {
-
-      ImGui::Image(_hack_screen_tex, screen_size, ImVec2(0, 1), ImVec2(1, 0));
-
-      ImGui::EndChild();
+      ImGui::Image(_hack_screen_tex, screen_size, ImVec2(0, 0), ImVec2(1, 1));
    }
+   ImGui::EndChild();
+
    ImGui::PopStyleVar();
    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + padding_x);
    ImGui::Button("Enable Keyboard");

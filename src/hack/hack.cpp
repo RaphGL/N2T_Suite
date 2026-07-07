@@ -159,7 +159,9 @@ void Hack::draw_screen(SDL_Renderer *renderer, SDL_Texture *texture) {
    }
 
    SDL_UpdateTexture(texture, nullptr, pixels.data(), 512 * sizeof(Uint32));
+   SDL_RenderClear(renderer);
    SDL_RenderTexture(renderer, texture, nullptr, nullptr);
+   SDL_RenderPresent(renderer);
 }
 
 static void panic_on_invalid_instruction(std::uint16_t pc, std::uint16_t instruction) {
@@ -173,6 +175,7 @@ bool Hack::load_rom(std::vector<uint16_t> &instructions) {
    }
 
    std::copy(instructions.begin(), instructions.end(), instruction_mem.begin());
+   this->pc = 0;
    return true;
 }
 

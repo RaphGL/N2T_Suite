@@ -19,6 +19,7 @@
 #include <format>
 #include <fstream>
 #include <iostream>
+#include <optional>
 #include <span>
 
 namespace chrono = std::chrono;
@@ -266,7 +267,7 @@ int gui_cmd(std::span<char *> args) {
 
    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
-   gui::GuiContext w{window};
+   gui::GuiContext w { window };
    w.set_styling();
 
    for (;;) {
@@ -275,6 +276,11 @@ int gui_cmd(std::span<char *> args) {
          ImGui_ImplSDL3_ProcessEvent(&e);
          if (e.type == SDL_EVENT_QUIT) {
             goto cleanup;
+         }
+         if (e.type == SDL_EVENT_KEY_DOWN) {
+           w.set_keyboard_input(e.key.key); 
+         } else {
+            w.set_keyboard_input(std::nullopt);
          }
       }
 
@@ -298,13 +304,18 @@ int gui_cmd(std::span<char *> args) {
 
          w.show_menu_bar();
          w.show_top_bar();
-         w.show_hack_screen();
 
          if (ImGui::BeginTable("memory-view", 2)) {
+            ImGui::TableSetupColumn("Memory View", ImGuiTableColumnFlags_WidthStretch, 0.3f);
+            ImGui::TableSetupColumn("Screen", ImGuiTableColumnFlags_WidthStretch, 0.7f);
+
             ImGui::TableNextColumn();
             w.show_memory_view(gui::MemoryViewType::ROM);
-            ImGui::TableNextColumn();
             w.show_memory_view(gui::MemoryViewType::RAM);
+
+            ImGui::TableNextColumn();
+            w.show_hack_screen();
+
             ImGui::EndTable();
          }
          ImGui::End();
