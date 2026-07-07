@@ -1,10 +1,9 @@
 #include "gui_widgets.hpp"
+#include "asm/codegen.hpp"
+#include "asm/lexer.hpp"
+#include "asm/parser.hpp"
 #include "hack/hack.hpp"
 #include "imgui.h"
-#include <SDL3/SDL_events.h>
-#include <SDL3/SDL_opengl.h>
-#include <SDL3/SDL_render.h>
-#include <SDL3/SDL_video.h>
 #include <array>
 
 #include <atomic>
@@ -88,18 +87,46 @@ GuiContext::GuiContext(SDL_Window *window)
             continue;
          }
 
-         // TODO: detect and compile if file is not raw hack bytes
-         // otherwise this thread crashes silently and dialog stops working
          auto file = dialog_get_file();
          if (!file.has_value()) {
             continue;
          }
 
-         std::ifstream filestream { file.value() };
-         std::stringstream contents;
-         contents << filestream.rdbuf();
-         if (!_hack.load_rom(std::move(contents.str()))) {
-            // TODO show error when file is not in a valid format
+         fs::path filepath = file.value();
+         auto file_ext = filepath.extension();
+         if (file_ext == ".asm") {
+            assembly::Lexer lexer { filepath };
+            auto tokens = lexer.tokenize();
+            if (tokens.empty()) {
+               // TODO say something to user
+               continue;
+            }
+            assembly::Parser parser { tokens, filepath };
+            auto ast = parser.parse();
+            if (!ast.has_value()) {
+               // TODO parser.get_error_report()
+               continue;
+            }
+            assembly::CodeGen codegen { ast.value(), filepath };
+            auto machine_code = codegen.compile();
+            if (!machine_code.has_value()) {
+               // TODO show error to user
+               continue;
+            }
+            _hack.load_rom(machine_code.value());
+         } else if (file_ext == ".jack") {
+            // TODO: compile once compiler is made
+         } else if (file_ext == ".vm") {
+            // TODO: compile once the vm translator is made
+         } else if (file_ext == ".hack") {
+            std::ifstream filestream { filepath };
+            std::stringstream contents;
+            contents << filestream.rdbuf();
+            if (!_hack.load_rom(std::move(contents.str()))) {
+               // TODO show error when file is not in a valid format
+            }
+         } else {
+            // TODO say not supported
          }
       }
    });
@@ -153,7 +180,6 @@ std::optional<fs::path> GuiContext::dialog_get_file() {
    return filepath;
 }
 
-// TODO: actually allow choosing the type when requesting dialog
 void GuiContext::load_program() {
    if (!_dialog_requested) {
       dialog_request_file();

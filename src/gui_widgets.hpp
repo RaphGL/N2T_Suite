@@ -29,6 +29,7 @@ class GuiContext final {
    SDL_Window *_window;
    GLuint _hack_screen_tex = -1;
 
+   // ==== Virtual Machine Runtime
    Hack _hack { };
    std::atomic<HackState> _hack_state = HackState::Stopped;
    std::atomic<std::optional<SDL_Keycode>> _hack_key;
