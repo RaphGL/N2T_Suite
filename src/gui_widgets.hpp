@@ -25,9 +25,22 @@ enum class HackState {
    Reset,
 };
 
+enum class LogType {
+   Error,
+   Success,
+};
+
+struct LogMessage {
+   LogType type;
+   std::string msg;
+};
+
 class GuiContext final {
    SDL_Window *_window;
    GLuint _hack_screen_tex = -1;
+
+   std::vector<LogMessage> _logs;
+   std::mutex _logs_mutex;
 
    // ==== Virtual Machine Runtime
    Hack _hack { };
@@ -55,6 +68,7 @@ class GuiContext final {
 
    void set_styling();
    void set_keyboard_input(std::optional<SDL_Keycode> key);
+   void push_log(LogType type, const char *msg);
    void load_program();
 
    // ==== Widgets API
@@ -63,8 +77,8 @@ class GuiContext final {
    void show_top_bar();
    void show_hack_screen();
    void show_modal_message(const char *name, const char *msg);
+   void show_logs();
 };
-
 }
 
 #endif

@@ -318,6 +318,7 @@ int gui_cmd(std::span<char *> args) {
 
             ImGui::TableNextColumn();
             w.show_hack_screen();
+            w.show_logs();
 
             ImGui::EndTable();
          }

@@ -42,7 +42,6 @@ GuiContext::GuiContext(SDL_Window *window)
       while (!token.stop_requested()) {
          auto frame_start = chrono::high_resolution_clock::now();
          try {
-
             switch (_hack_state) {
             case HackState::Stopped:
                std::this_thread::sleep_for(chrono::milliseconds(30));
@@ -103,22 +102,26 @@ GuiContext::GuiContext(SDL_Window *window)
             assembly::Lexer lexer { filepath };
             auto tokens = lexer.tokenize();
             if (tokens.empty()) {
-               // TODO say something to user
+               push_log(LogType::Error, "Failed to lex file.");
                continue;
             }
             assembly::Parser parser { tokens, filepath };
             auto ast = parser.parse();
             if (!ast.has_value()) {
-               // TODO parser.get_error_report()
+               auto report = parser.get_error_report();
+               push_log(LogType::Error, report.data());
                continue;
             }
             assembly::CodeGen codegen { ast.value(), filepath };
             auto machine_code = codegen.compile();
             if (!machine_code.has_value()) {
-               // TODO show error to user
+               auto report = codegen.get_error_report();
+               push_log(LogType::Error, report.data());
                continue;
             }
+
             _hack.load_rom(machine_code.value());
+            push_log(LogType::Success, "ROM Loaded.");
          } else if (file_ext == ".jack") {
             // TODO: compile once compiler is made
          } else if (file_ext == ".vm") {
@@ -128,10 +131,12 @@ GuiContext::GuiContext(SDL_Window *window)
             std::stringstream contents;
             contents << filestream.rdbuf();
             if (!_hack.load_rom(std::move(contents.str()))) {
-               // TODO show error when file is not in a valid format
+               push_log(LogType::Error,
+                   "Failed to load Hack ROM, please check that the file contains valid hack "
+                   "machine code.");
             }
          } else {
-            // TODO say not supported
+            push_log(LogType::Error, "File contains an invalid extension.");
          }
       }
    });
@@ -193,7 +198,7 @@ void GuiContext::load_program() {
 
 void GuiContext::show_top_bar() {
    ImGui::BeginGroup();
-   if (ImGui::BeginChild("top-bar", ImVec2(0, 40), ImGuiChildFlags_Borders)) {
+   if (ImGui::BeginChild("top-bar", ImVec2(0, 40))) {
       if (ImGui::Button("Load Program")) {
          load_program();
       }
@@ -202,12 +207,8 @@ void GuiContext::show_top_bar() {
          _hack_state = HackState::StepThrough;
       }
       ImGui::SameLine();
-      if (ImGui::Button("Run")) {
-         _hack_state = HackState::Running;
-      }
-      ImGui::SameLine();
-      if (ImGui::Button("Stop")) {
-         _hack_state = HackState::Stopped;
+      if (ImGui::Button(_hack_state != HackState::Running ? "Run" : "Stop")) {
+         _hack_state = _hack_state == HackState::Running ? HackState::Stopped : HackState::Running;
       }
       ImGui::SameLine();
       if (ImGui::Button("Reset")) {
@@ -217,7 +218,7 @@ void GuiContext::show_top_bar() {
       ImGui::Button("Load Script");
 
       ImGui::SameLine();
-      ImGui::Text("CPU Speed:");
+      ImGui::TextUnformatted("CPU Speed:");
       ImGui::SameLine();
       ImGui::SetNextItemWidth(100);
       if (ImGui::SliderFloat("##program-speed", &_hack_speed, 0.5f, 2.0f, "%.1f")) {
@@ -255,7 +256,7 @@ void GuiContext::show_memory_view(MemoryViewType type) {
    ImGui::BeginGroup();
    {
       ImGui::BeginGroup();
-      ImGui::Text("%s", label.data());
+      ImGui::TextUnformatted(label.data());
       ImGui::SameLine();
 
       ImGui::PushID(label.data());
@@ -388,6 +389,48 @@ void GuiContext::show_menu_bar() {
        "N2T Suite is free and open source software licensed under EUPL 1.2 and "
        "maintained by RaphGL. If you find any bugs or performance issues, report "
        "them in the repository.");
+}
+
+void GuiContext::push_log(LogType type, const char *msg) {
+   _logs_mutex.lock();
+   _logs.push_back({
+       .type = type,
+       .msg = msg,
+   });
+   _logs_mutex.unlock();
+}
+
+void GuiContext::show_logs() {
+   if (ImGui::Button("Clear")) {
+      _logs.clear();
+   }
+   ImGui::BeginChild("logs", ImVec2(0, 200), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeY);
+   ImGui::Dummy(ImVec2(0, 5));
+
+   ImGuiListClipper clipper;
+   clipper.Begin(_logs.size());
+
+   while (clipper.Step()) {
+      for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
+         auto log = _logs.at(i);
+         switch (log.type) {
+         case LogType::Error:
+            ImGui::PushStyleColor(
+                ImGuiCol_Text, ImVec4(0xFF / 255.0f, 0x55 / 255.0f, 0x55 / 255.0f, 0xFF / 255.0f));
+            ImGui::TextUnformatted("Error: ");
+            break;
+         case LogType::Success:
+            ImGui::PushStyleColor(
+                ImGuiCol_Text, ImVec4(0x50 / 255.0f, 0xFA / 255.0f, 0x7B / 255.0f, 0xFF / 255.0f));
+            ImGui::TextUnformatted("Success: ");
+            break;
+         }
+         ImGui::SameLine();
+         ImGui::TextUnformatted(log.msg.data());
+         ImGui::PopStyleColor();
+      }
+   }
+   ImGui::EndChild();
 }
 
 void GuiContext::show_hack_screen() {
