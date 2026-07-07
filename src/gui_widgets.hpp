@@ -61,6 +61,7 @@ class GuiContext final {
    void show_menu_bar();
    void show_top_bar();
    void show_hack_screen();
+   void show_modal_message(const char *name, const char *msg);
 };
 
 }

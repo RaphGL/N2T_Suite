@@ -306,8 +306,30 @@ void GuiContext::show_memory_view(MemoryViewType type) {
    ImGui::EndGroup();
 }
 
+void GuiContext::show_modal_message(const char *name, const char *msg) {
+   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(40, 0));
+   if (ImGui::BeginPopupModal(name, nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
+      ImGui::Dummy(ImVec2(0, 20));
+      ImGui::PushTextWrapPos(450);
+      ImGui::TextWrapped("%s", msg);
+      ImGui::TextLinkOpenURL("Open Repository", "https://github.com/RaphGL/N2T_Suite");
+      ImGui::PopTextWrapPos();
+
+      ImGui::Spacing();
+      if (ImGui::Button("OK", ImVec2(100, 0))) {
+         ImGui::CloseCurrentPopup();
+      }
+      ImGui::EndPopup();
+   }
+   ImGui::PopStyleVar();
+}
+
 void GuiContext::show_menu_bar() {
+
+   bool open_about_popup = false;
+
    if (ImGui::BeginMenuBar()) {
+
       if (ImGui::BeginMenu("File")) {
          if (ImGui::MenuItem("Load Program")) {
             load_program();
@@ -318,11 +340,23 @@ void GuiContext::show_menu_bar() {
 
       if (ImGui::BeginMenu("Help")) {
          ImGui::MenuItem("Usage");
-         ImGui::MenuItem("About");
+         if (ImGui::MenuItem("About")) {
+            open_about_popup = true;
+         }
+
          ImGui::EndMenu();
       }
       ImGui::EndMenuBar();
    }
+
+   if (open_about_popup) {
+      ImGui::OpenPopup("About");
+   }
+
+   show_modal_message("About",
+       "N2T Suite is free and open source software licensed under EUPL 1.2 and "
+       "maintained by RaphGL. If you find any bugs or performance issues, report "
+       "them in the repository.");
 }
 
 void GuiContext::show_hack_screen() {
