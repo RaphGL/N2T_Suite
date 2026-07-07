@@ -1,12 +1,93 @@
 #include "gui_widgets.hpp"
 #include "imgui.h"
+#include <SDL3/SDL_dialog.h>
 #include <array>
+#include <cmath>
 #include <cstdint>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <optional>
+#include <sstream>
 #include <string_view>
+
+namespace fs = std::filesystem;
 
 namespace gui {
 
-void show_memory_view(MemoryViewType type) {
+void GuiContext::dialog_request_file() {
+   SDL_DialogFileCallback callback = [](void *userdata, const char *const *filelist, int _) {
+      auto filepath = static_cast<std::optional<fs::path> *>(userdata);
+
+      if (*filelist) {
+         *filepath = *filelist;
+      }
+   };
+
+   _dialog_path = std::nullopt;
+   _dialog_requested = true;
+   SDL_ShowOpenFileDialog(callback, &_dialog_path, _window, NULL, 0, NULL, false);
+}
+
+bool GuiContext::dialog_ready() const { return _dialog_requested && _dialog_path.has_value(); }
+
+fs::path GuiContext::dialog_get_file() {
+   fs::path filepath = _dialog_path.value();
+   _dialog_path = std::nullopt;
+   _dialog_requested = false;
+   return filepath;
+}
+
+void GuiContext::load_program() {
+   if (!_dialog_requested) {
+      dialog_request_file();
+   }
+
+   if (!dialog_ready()) {
+      return;
+   }
+
+   auto file = dialog_get_file();
+   std::ifstream filestream { file };
+   std::stringstream contents;
+   contents << filestream.rdbuf();
+   std::cout << contents.str();
+   _hack.load_rom(std::move(contents.str()));
+}
+
+void GuiContext::show_top_bar() {
+   ImGui::BeginGroup();
+   if (ImGui::BeginChild("top-bar", ImVec2(0, 40), ImGuiChildFlags_Borders)) {
+      if (ImGui::Button("Load Program")) {
+         load_program();
+      }
+      ImGui::SameLine();
+      ImGui::Button("Single Step");
+      ImGui::SameLine();
+      ImGui::Button("Run");
+      ImGui::SameLine();
+      ImGui::Button("Stop");
+      ImGui::SameLine();
+      ImGui::Button("Reset");
+      ImGui::SameLine();
+      ImGui::Button("Load Script");
+
+      ImGui::SameLine();
+      ImGui::Text("CPU Speed:");
+      ImGui::SameLine();
+      ImGui::SetNextItemWidth(100);
+      static float cpu_speed = 1;
+      if (ImGui::SliderFloat("##program-speed", &cpu_speed, 0.5f, 2.0f, "%.1f")) {
+         constexpr float step = 0.1f;
+         cpu_speed = std::round(cpu_speed / step) * step;
+      }
+
+      ImGui::EndChild();
+   }
+   ImGui::EndGroup();
+}
+
+void GuiContext::show_memory_view(MemoryViewType type) {
    std::string_view label;
    switch (type) {
    case MemoryViewType::RAM:
@@ -25,8 +106,8 @@ void show_memory_view(MemoryViewType type) {
       ImGui::SameLine();
 
       ImGui::PushID(label.data());
-      if (ImGui::Button("Load")) {
-         // TODO
+      if (type != MemoryViewType::RAM && ImGui::Button("Load")) {
+         load_program();
       }
       ImGui::SameLine();
       if (ImGui::Button("Clear")) {
@@ -71,17 +152,31 @@ void show_memory_view(MemoryViewType type) {
          ImGui::TableSetupColumn("##address", ImGuiTableColumnFlags_WidthFixed, 50);
          ImGui::TableSetupColumn("##memory-contents", ImGuiTableColumnFlags_WidthStretch);
 
-         for (int i = 1000; i < 1100; i++) {
-            ImGui::TableNextRow();
+         std::span<std::uint16_t> hack_mem { };
+         switch (type) {
+         case MemoryViewType::RAM:
+            hack_mem = _hack.data_mem;
+            break;
+         case MemoryViewType::ROM:
+            hack_mem = _hack.instruction_mem;
+            break;
+         }
 
-            ImGui::PushID(i);
-            ImGui::TableNextColumn();
-            ImGui::Text("%d", i);
+         // necessary otherwise the performance would crawl with 32K items to render
+         ImGuiListClipper clipper;
+         clipper.Begin(hack_mem.size());
+         while (clipper.Step()) {
+            for (auto i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
+               ImGui::TableNextRow();
 
-            ImGui::TableNextColumn();
-            std::uint16_t tmp = 0;
-            ImGui::InputScalarN("##mem_address", ImGuiDataType_U16, &tmp, 1);
-            ImGui::PopID();
+               ImGui::PushID(i);
+               ImGui::TableNextColumn();
+               ImGui::Text("%d", static_cast<int>(i));
+
+               ImGui::TableNextColumn();
+               ImGui::InputScalarN("##mem_address", ImGuiDataType_U16, &hack_mem[i], 1);
+               ImGui::PopID();
+            }
          }
          ImGui::EndTable();
       }

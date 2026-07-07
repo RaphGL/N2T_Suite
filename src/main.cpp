@@ -288,7 +288,7 @@ int gui_cmd(std::span<char *> args) {
 
    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
-   ImGuiViewport *viewport = ImGui::GetMainViewport();
+   gui::GuiContext w{window};
 
    for (;;) {
       SDL_Event e;
@@ -329,13 +329,15 @@ int gui_cmd(std::span<char *> args) {
                ImGui::EndMenu();
             }
             ImGui::EndMenuBar();
-         }
+         }         
 
-         if (ImGui::BeginTable("Memory View", 2)) {
+         w.show_top_bar();
+
+         if (ImGui::BeginTable("memory-view", 2)) {
             ImGui::TableNextColumn();
-            gui::show_memory_view(gui::MemoryViewType::ROM);
+            w.show_memory_view(gui::MemoryViewType::ROM);
             ImGui::TableNextColumn();
-            gui::show_memory_view(gui::MemoryViewType::RAM);
+            w.show_memory_view(gui::MemoryViewType::RAM);
             ImGui::EndTable();
          }
          ImGui::End();
