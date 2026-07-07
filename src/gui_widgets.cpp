@@ -389,7 +389,7 @@ void GuiContext::show_hack_screen() {
    auto screen = _hack.get_screen_mmap();
 
    std::array<GLuint, 512 * 256> pixels;
-   std::fill(pixels.begin(), pixels.end(), 0x000000FF);
+   std::fill(pixels.begin(), pixels.end(), 0xFF000000);
 
    for (std::size_t y = 0; y < 256; ++y) {
       for (std::size_t x_chunk = 0; x_chunk < 32; ++x_chunk) {
