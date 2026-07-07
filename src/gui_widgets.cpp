@@ -2,6 +2,7 @@
 #include "imgui.h"
 #include <SDL3/SDL_dialog.h>
 #include <array>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <filesystem>
@@ -10,10 +11,28 @@
 #include <optional>
 #include <sstream>
 #include <string_view>
+#include <thread>
 
 namespace fs = std::filesystem;
 
 namespace gui {
+
+GuiContext::GuiContext(SDL_Window *window)
+    : _window { window } {
+   _dialog_worker = std::jthread([this]() {
+      while (!dialog_ready()) {
+         std::this_thread::sleep_for(std::chrono::milliseconds(30));
+      }
+
+      // TODO: detect and compile if file is not raw hack bytes
+      // otherwise this thread crashes silently and dialog stops working
+      auto file = dialog_get_file();
+      std::ifstream filestream { file };
+      std::stringstream contents;
+      contents << filestream.rdbuf();
+      _hack.load_rom(std::move(contents.str()));
+   });
+}
 
 void GuiContext::dialog_request_file() {
    SDL_DialogFileCallback callback = [](void *userdata, const char *const *filelist, int _) {
@@ -38,21 +57,11 @@ fs::path GuiContext::dialog_get_file() {
    return filepath;
 }
 
+// TODO: actually allow choosing the type when requesting dialog
 void GuiContext::load_program() {
    if (!_dialog_requested) {
       dialog_request_file();
    }
-
-   if (!dialog_ready()) {
-      return;
-   }
-
-   auto file = dialog_get_file();
-   std::ifstream filestream { file };
-   std::stringstream contents;
-   contents << filestream.rdbuf();
-   std::cout << contents.str();
-   _hack.load_rom(std::move(contents.str()));
 }
 
 void GuiContext::show_top_bar() {
@@ -87,6 +96,17 @@ void GuiContext::show_top_bar() {
    ImGui::EndGroup();
 }
 
+void GuiContext::clear_hack_memory(MemoryViewType type) {
+   switch (type) {
+   case MemoryViewType::RAM:
+      std::fill(_hack.data_mem.begin(), _hack.data_mem.end(), 0);
+      break;
+   case MemoryViewType::ROM:
+      std::fill(_hack.instruction_mem.begin(), _hack.instruction_mem.end(), 0);
+      break;
+   }
+}
+
 void GuiContext::show_memory_view(MemoryViewType type) {
    std::string_view label;
    switch (type) {
@@ -111,7 +131,7 @@ void GuiContext::show_memory_view(MemoryViewType type) {
       }
       ImGui::SameLine();
       if (ImGui::Button("Clear")) {
-         // TODO
+         clear_hack_memory(type);
       }
       ImGui::SameLine();
       if (ImGui::Button("Search")) {
