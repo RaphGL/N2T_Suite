@@ -1,6 +1,7 @@
 #include "asm/codegen.hpp"
 #include "asm/lexer.hpp"
 #include "asm/parser.hpp"
+#include "gui_widgets.hpp"
 #include "hack/hack.hpp"
 // #include "hdl/lexer.hpp"
 // #include "hdl/parser.hpp"
@@ -255,7 +256,7 @@ int gui_cmd(std::span<char *> args) {
    float main_scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
 
    SDL_Window *window
-       = SDL_CreateWindow("N2T Suite", 800, 400, SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
+       = SDL_CreateWindow("N2T Suite", 1200, 800, SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
    if (!window) {
       std::cerr << SDL_GetError() << '\n';
       return 1;
@@ -287,6 +288,8 @@ int gui_cmd(std::span<char *> args) {
 
    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
+   ImGuiViewport *viewport = ImGui::GetMainViewport();
+
    for (;;) {
       SDL_Event e;
       while (SDL_PollEvent(&e)) {
@@ -296,12 +299,49 @@ int gui_cmd(std::span<char *> args) {
          }
       }
 
+      if (SDL_GetWindowFlags(window) & SDL_WINDOW_MINIMIZED) {
+         SDL_Delay(10);
+         continue;
+      }
+
       ImGui_ImplOpenGL3_NewFrame();
       ImGui_ImplSDL3_NewFrame();
       ImGui::NewFrame();
 
-      ImGui::ShowDemoWindow();
+      const ImGuiViewport *viewport = ImGui::GetMainViewport();
+      ImGui::SetNextWindowPos(viewport->WorkPos);
+      ImGui::SetNextWindowSize(viewport->WorkSize);
+      ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
 
+      ImGuiWindowFlags winflags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove
+          | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoSavedSettings;
+      if (ImGui::Begin("N2T Suite", nullptr, winflags)) {
+         if (ImGui::BeginMenuBar()) {
+            if (ImGui::BeginMenu("File")) {
+               ImGui::MenuItem("Load Program");
+               ImGui::MenuItem("Load Test Script");
+               ImGui::EndMenu();
+            }
+
+            if (ImGui::BeginMenu("Help")) {
+               ImGui::MenuItem("Usage");
+               ImGui::MenuItem("About");
+               ImGui::EndMenu();
+            }
+            ImGui::EndMenuBar();
+         }
+
+         if (ImGui::BeginTable("Memory View", 2)) {
+            ImGui::TableNextColumn();
+            gui::show_memory_view(gui::MemoryViewType::ROM);
+            ImGui::TableNextColumn();
+            gui::show_memory_view(gui::MemoryViewType::RAM);
+            ImGui::EndTable();
+         }
+         ImGui::End();
+      }
+
+      ImGui::PopStyleVar();
       ImGui::Render();
       glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
       glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w,
@@ -330,6 +370,7 @@ void print_help(const char *program) {
                             "\trun\tRun the hack emulator\n"
                             "\tasm\tCompile assembly into hack instructions\n"
                             "\thdl\tResolve hdl circuit\n"
+                            "\tgui\tRun N2T GUI suite\n"
                             "\thelp\tPrint this message\n",
        program, program);
 }

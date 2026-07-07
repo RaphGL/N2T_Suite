@@ -34,6 +34,7 @@ add_subdirectory(vendor/imgui)
 
 add_executable(n2t
   src/main.cpp
+  src/gui_widgets.cpp
 )
 
 find_package(SDL3 REQUIRED CONFIG REQUIRED COMPONENTS SDL3)
