@@ -41,35 +41,40 @@ GuiContext::GuiContext(SDL_Window *window)
       constexpr int ticks_per_frame = 1400000 / 60;
       while (!token.stop_requested()) {
          auto frame_start = chrono::high_resolution_clock::now();
-         switch (_hack_state) {
-         case HackState::Stopped:
-            std::this_thread::sleep_for(chrono::milliseconds(30));
-            break;
+         try {
 
-         case HackState::Running: {
-            auto key = _hack_key.load(std::memory_order_seq_cst);
-            auto &keyboard_mem = _hack.get_keyboard_mmap();
-            if (key.has_value()) {
-               keyboard_mem = convert_input_to_hack(key.value());
-            } else {
-               keyboard_mem = 0;
-            }
+            switch (_hack_state) {
+            case HackState::Stopped:
+               std::this_thread::sleep_for(chrono::milliseconds(30));
+               break;
 
-            for (int i = 0; i < ticks_per_frame * _hack_speed; i++) {
+            case HackState::Running: {
+               auto key = _hack_key.load(std::memory_order_seq_cst);
+               auto &keyboard_mem = _hack.get_keyboard_mmap();
+               if (key.has_value()) {
+                  keyboard_mem = convert_input_to_hack(key.value());
+               } else {
+                  keyboard_mem = 0;
+               }
+
+               for (int i = 0; i < ticks_per_frame * _hack_speed; i++) {
+                  _hack.tick();
+               }
+            } break;
+
+            case HackState::StepThrough:
                _hack.tick();
+               _hack_state = HackState::Stopped;
+               std::this_thread::sleep_for(chrono::milliseconds(30));
+               break;
+
+            case HackState::Reset:
+               _hack.pc = 0;
+               _hack_state = HackState::Stopped;
+               break;
             }
-         } break;
-
-         case HackState::StepThrough:
-            _hack.tick();
+         } catch (std::out_of_range) {
             _hack_state = HackState::Stopped;
-            std::this_thread::sleep_for(chrono::milliseconds(30));
-            break;
-
-         case HackState::Reset:
-            _hack.pc = 0;
-            _hack_state = HackState::Stopped;
-            break;
          }
 
          auto frame_end = chrono::milliseconds(0);
@@ -388,7 +393,7 @@ void GuiContext::show_menu_bar() {
 void GuiContext::show_hack_screen() {
    auto screen = _hack.get_screen_mmap();
 
-   std::array<GLuint, 512 * 256> pixels;
+   static std::array<GLuint, 512 * 256> pixels;
    std::fill(pixels.begin(), pixels.end(), 0xFF000000);
 
    for (std::size_t y = 0; y < 256; ++y) {

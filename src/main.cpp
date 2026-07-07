@@ -10,6 +10,7 @@
 #include "imgui.h"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_error.h>
+#include <SDL3/SDL_events.h>
 #include <SDL3/SDL_init.h>
 #include <SDL3/SDL_opengl.h>
 #include <SDL3/SDL_video.h>
@@ -274,19 +275,22 @@ int gui_cmd(std::span<char *> args) {
       SDL_Event e;
       while (SDL_PollEvent(&e)) {
          ImGui_ImplSDL3_ProcessEvent(&e);
-         if (e.type == SDL_EVENT_QUIT) {
+         switch (e.type) {
+         case SDL_EVENT_QUIT:
             goto cleanup;
-         }
-         if (e.type == SDL_EVENT_KEY_DOWN) {
-           w.set_keyboard_input(e.key.key); 
-         } else {
-            w.set_keyboard_input(std::nullopt);
-         }
-      }
 
-      if (SDL_GetWindowFlags(window) & SDL_WINDOW_MINIMIZED) {
-         SDL_Delay(10);
-         continue;
+         case SDL_EVENT_KEY_DOWN:
+            w.set_keyboard_input(e.key.key);
+            break;
+
+         case SDL_EVENT_KEY_UP:
+            w.set_keyboard_input(std::nullopt);
+            break;
+
+         case SDL_EVENT_WINDOW_MINIMIZED:
+            SDL_Delay(10);
+            break;
+         }
       }
 
       ImGui_ImplOpenGL3_NewFrame();
@@ -296,7 +300,6 @@ int gui_cmd(std::span<char *> args) {
       const ImGuiViewport *viewport = ImGui::GetMainViewport();
       ImGui::SetNextWindowPos(viewport->WorkPos);
       ImGui::SetNextWindowSize(viewport->WorkSize);
-      ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
 
       ImGuiWindowFlags winflags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove
           | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoSavedSettings;
@@ -321,7 +324,6 @@ int gui_cmd(std::span<char *> args) {
          ImGui::End();
       }
 
-      ImGui::PopStyleVar();
       ImGui::Render();
       glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
       glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w,
