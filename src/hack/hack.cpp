@@ -167,8 +167,12 @@ bool Hack::load_rom(std::string_view instructions) {
 
    std::string tmp { };
    while (std::getline(inststream, tmp)) {
-      auto inst = std::stoull(tmp, nullptr, 2);
-      bin_insts.push_back(inst);
+      try {
+         auto inst = std::stoull(tmp, nullptr, 2);
+         bin_insts.push_back(inst);
+      } catch (...) {
+         return false;
+      }
    }
 
    return this->load_rom(bin_insts);

@@ -289,6 +289,7 @@ int gui_cmd(std::span<char *> args) {
    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
    gui::GuiContext w{window};
+   w.set_styling();
 
    for (;;) {
       SDL_Event e;
@@ -316,20 +317,6 @@ int gui_cmd(std::span<char *> args) {
       ImGuiWindowFlags winflags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove
           | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoSavedSettings;
       if (ImGui::Begin("N2T Suite", nullptr, winflags)) {
-         if (ImGui::BeginMenuBar()) {
-            if (ImGui::BeginMenu("File")) {
-               ImGui::MenuItem("Load Program");
-               ImGui::MenuItem("Load Test Script");
-               ImGui::EndMenu();
-            }
-
-            if (ImGui::BeginMenu("Help")) {
-               ImGui::MenuItem("Usage");
-               ImGui::MenuItem("About");
-               ImGui::EndMenu();
-            }
-            ImGui::EndMenuBar();
-         }         
 
          w.show_top_bar();
 
