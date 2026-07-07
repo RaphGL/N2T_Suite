@@ -13,7 +13,6 @@
 #include <SDL3/SDL_init.h>
 #include <SDL3/SDL_opengl.h>
 #include <SDL3/SDL_video.h>
-#include <algorithm>
 #include <cctype>
 #include <chrono>
 #include <filesystem>
@@ -24,27 +23,6 @@
 
 namespace chrono = std::chrono;
 namespace fs = std::filesystem;
-
-void draw_screen(SDL_Renderer *renderer, SDL_Texture *texture, ScreenSpan screen) {
-   std::array<Uint32, 512 * 256> pixels;
-   std::fill(pixels.begin(), pixels.end(), 0x000000FF);
-
-   for (std::size_t y = 0; y < 256; ++y) {
-      for (std::size_t x_chunk = 0; x_chunk < 32; ++x_chunk) {
-         std::uint16_t chunk = screen[y * 32 + x_chunk];
-         for (std::size_t i = 0; i < 16; ++i) {
-            if (chunk & (1 << i)) {
-               pixels.at(y * 512 + (x_chunk * 16 + i)) = 0xFFFFFFFF;
-            }
-         }
-      }
-   }
-
-   SDL_UpdateTexture(texture, nullptr, pixels.data(), 512 * sizeof(Uint32));
-   SDL_RenderClear(renderer);
-   SDL_RenderTexture(renderer, texture, nullptr, nullptr);
-   SDL_RenderPresent(renderer);
-}
 
 int hdl_cmd(std::span<char *> args) {
    std::cerr << "TODO: hdl command hasn't been implemented yet.\n";
@@ -229,7 +207,7 @@ load_rom:
              chrono::high_resolution_clock::now() - frame_start)
                          .count();
       }
-      draw_screen(renderer, texture, hack.get_screen_mmap());
+      hack.draw_screen(renderer, texture);
    }
 
    SDL_DestroyTexture(texture);
@@ -318,7 +296,9 @@ int gui_cmd(std::span<char *> args) {
           | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoSavedSettings;
       if (ImGui::Begin("N2T Suite", nullptr, winflags)) {
 
+         w.show_menu_bar();
          w.show_top_bar();
+         w.show_hack_screen();
 
          if (ImGui::BeginTable("memory-view", 2)) {
             ImGui::TableNextColumn();

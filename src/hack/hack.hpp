@@ -36,6 +36,7 @@ struct Hack {
 
    // Throws an exception if an invalid instruction is ever reached
    void tick();
+   void draw_screen(SDL_Renderer *renderer, SDL_Texture *texture);
 };
 
 #endif

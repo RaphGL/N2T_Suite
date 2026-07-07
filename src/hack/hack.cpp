@@ -141,6 +141,27 @@ std::uint16_t convert_input_to_hack(SDL_Keycode key) {
    }
 }
 
+void Hack::draw_screen(SDL_Renderer *renderer, SDL_Texture *texture) {
+   auto screen = get_screen_mmap();
+
+   std::array<Uint32, 512 * 256> pixels;
+   std::fill(pixels.begin(), pixels.end(), 0x000000FF);
+
+   for (std::size_t y = 0; y < 256; ++y) {
+      for (std::size_t x_chunk = 0; x_chunk < 32; ++x_chunk) {
+         std::uint16_t chunk = screen[y * 32 + x_chunk];
+         for (std::size_t i = 0; i < 16; ++i) {
+            if (chunk & (1 << i)) {
+               pixels.at(y * 512 + (x_chunk * 16 + i)) = 0xFFFFFFFF;
+            }
+         }
+      }
+   }
+
+   SDL_UpdateTexture(texture, nullptr, pixels.data(), 512 * sizeof(Uint32));
+   SDL_RenderTexture(renderer, texture, nullptr, nullptr);
+}
+
 static void panic_on_invalid_instruction(std::uint16_t pc, std::uint16_t instruction) {
    auto inst_str = std::to_string(instruction);
    throw std::format("Invalid instruction reached at pc = {} with value: `{}`", pc, inst_str);

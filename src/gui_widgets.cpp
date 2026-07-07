@@ -1,7 +1,11 @@
 #include "gui_widgets.hpp"
+#include "hack/hack.hpp"
 #include "imgui.h"
-#include <SDL3/SDL_dialog.h>
+#include <SDL3/SDL_opengl.h>
+#include <SDL3/SDL_render.h>
+#include <SDL3/SDL_video.h>
 #include <array>
+
 #include <chrono>
 #include <cmath>
 #include <cstdint>
@@ -19,6 +23,18 @@ namespace gui {
 
 GuiContext::GuiContext(SDL_Window *window)
     : _window { window } {
+   {
+      glGenTextures(1, &_hack_screen_tex);
+      glBindTexture(GL_TEXTURE_2D, _hack_screen_tex);
+
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+      glBindTexture(GL_TEXTURE_2D, 0);
+   }
+
    _dialog_worker = std::jthread([this](std::stop_token token) {
       while (!token.stop_requested()) {
          if (!dialog_ready()) {
@@ -42,6 +58,8 @@ GuiContext::GuiContext(SDL_Window *window)
       }
    });
 }
+
+GuiContext::~GuiContext() { glDeleteTextures(1, &_hack_screen_tex); }
 
 void GuiContext::set_styling() {
    const char *default_font_path =
@@ -251,4 +269,49 @@ void GuiContext::show_menu_bar() {
       ImGui::EndMenuBar();
    }
 }
-};
+
+void GuiContext::show_hack_screen() {
+   auto screen = _hack.get_screen_mmap();
+
+   std::array<GLuint, 512 * 256> pixels;
+   std::fill(pixels.begin(), pixels.end(), 0x000000FF);
+
+   for (std::size_t y = 0; y < 256; ++y) {
+      for (std::size_t x_chunk = 0; x_chunk < 32; ++x_chunk) {
+         std::uint16_t chunk = screen[y * 32 + x_chunk];
+         for (std::size_t i = 0; i < 16; ++i) {
+            if (chunk & (1 << i)) {
+               pixels.at(y * 512 + (x_chunk * 16 + i)) = 0xFFFFFFFF;
+            }
+         }
+      }
+   }
+
+   glBindTexture(GL_TEXTURE_2D, _hack_screen_tex);
+   glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 512, 256, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+
+   ImGui::Dummy(ImVec2(0, 10));
+   ImVec2 screen_size { 512.0f * 1.3, 256.0f * 1.3 };
+   ImVec2 avail_size = ImGui::GetContentRegionAvail();
+
+   float padding_x = (avail_size.x - screen_size.x) / 2;
+   if (padding_x > 0.0f) {
+      ImGui::SetCursorPosX(ImGui::GetCursorPosX() + padding_x);
+   }
+   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(2, 2));
+   if (ImGui::BeginChild(
+           "##hack-screen", ImVec2(screen_size.x, screen_size.y + 5), ImGuiChildFlags_Borders)) {
+
+      ImGui::Image(_hack_screen_tex, screen_size, ImVec2(0, 1), ImVec2(1, 0));
+
+      ImGui::EndChild();
+   }
+   ImGui::PopStyleVar();
+   ImGui::SetCursorPosX(ImGui::GetCursorPosX() + padding_x);
+   ImGui::Button("Enable Keyboard");
+   ImGui::SameLine();
+   ImGui::Text("Input: TODO");
+   ImGui::Dummy(ImVec2(0, 10));
+}
+
+}
