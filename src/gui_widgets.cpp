@@ -409,11 +409,13 @@ void GuiContext::show_memory_view(MemoryViewType type, int default_height) {
 
 void GuiContext::show_modal_message(const char *name, const char *msg) {
    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(40, 0));
+   ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_None, ImVec2(0.5, 0.5));
    if (ImGui::BeginPopupModal(name, nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
       ImGui::Dummy(ImVec2(0, 20));
       ImGui::PushTextWrapPos(450);
       ImGui::TextWrapped("%s", msg);
       ImGui::TextLinkOpenURL("Open Repository", "https://github.com/RaphGL/N2T_Suite");
+      ImGui::Spacing();
       ImGui::PopTextWrapPos();
 
       ImGui::Spacing();
