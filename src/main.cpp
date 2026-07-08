@@ -1,6 +1,4 @@
-#include "asm/codegen.hpp"
-#include "asm/lexer.hpp"
-#include "asm/parser.hpp"
+#include "asm/asm.hpp"
 #include "gui_widgets.hpp"
 #include "hack/hack.hpp"
 // #include "hdl/lexer.hpp"

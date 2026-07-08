@@ -5,6 +5,7 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_opengl.h>
 #include <filesystem>
+#include <string_view>
 #include <mutex>
 #include <optional>
 #include <thread>
@@ -18,6 +19,14 @@ enum class MemoryViewType : int {
    RAM,
 
    Count,
+};
+
+enum class MemoryViewOption {
+  Asm, 
+  Hex,
+  Bin,
+  Dec,
+
 };
 
 enum class HackState {

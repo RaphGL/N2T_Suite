@@ -1,7 +1,5 @@
 #include "gui_widgets.hpp"
-#include "asm/codegen.hpp"
-#include "asm/lexer.hpp"
-#include "asm/parser.hpp"
+#include "asm/asm.hpp"
 #include "hack/hack.hpp"
 #include "imgui.h"
 #include "imgui_internal.h"
@@ -287,6 +285,25 @@ void GuiContext::set_memory_view_scroll(int row) {
    ImGui::SetScrollY(row_height * view_point);
 }
 
+std::string_view view_option_to_string(MemoryViewOption view_option) {
+   std::string_view view_option_str;
+   switch (view_option) {
+   case MemoryViewOption::Asm:
+      view_option_str = "Assembly";
+      break;
+   case MemoryViewOption::Bin:
+      view_option_str = "Binary";
+      break;
+   case MemoryViewOption::Dec:
+      view_option_str = "Decimal";
+      break;
+   case MemoryViewOption::Hex:
+      view_option_str = "Hexadecimal";
+      break;
+   }
+   return view_option_str;
+}
+
 void GuiContext::show_memory_view(MemoryViewType type, int default_height) {
    std::string_view label;
    switch (type) {
@@ -318,23 +335,28 @@ void GuiContext::show_memory_view(MemoryViewType type, int default_height) {
          // TODO
       }
 
-      static std::array<std::size_t, static_cast<int>(MemoryViewType::Count)> curr_view_opt
-          = { 0, 1 };
-      std::array<std::string_view, 4> view_options {
-         "assembly",
-         "binary",
-         "decimal",
-         "hexademical",
+      static std::array<MemoryViewOption, static_cast<int>(MemoryViewType::Count)> curr_view_opt
+          = { MemoryViewOption::Asm, MemoryViewOption::Dec };
+
+      std::array<MemoryViewOption, 4> view_options {
+         MemoryViewOption::Asm,
+         MemoryViewOption::Bin,
+         MemoryViewOption::Dec,
+         MemoryViewOption::Hex,
       };
       ImGui::SameLine();
       ImGui::SetNextItemWidth(-FLT_MIN);
-      if (ImGui::BeginCombo(
-              "##view-options", view_options.at(curr_view_opt.at(static_cast<int>(type))).data())) {
+
+      if (ImGui::BeginCombo("##view-options",
+              view_option_to_string(curr_view_opt[static_cast<int>(type)]).data())) {
          std::size_t start_idx = type == MemoryViewType::RAM ? 1 : 0;
          for (std::size_t i = start_idx; i < view_options.size(); i++) {
-            bool is_selected = curr_view_opt.at(static_cast<int>(type)) == i;
-            if (ImGui::Selectable(view_options[i].data(), is_selected)) {
-               curr_view_opt[static_cast<int>(type)] = i;
+            bool is_selected
+                = curr_view_opt.at(static_cast<int>(type)) == static_cast<MemoryViewOption>(i);
+
+            auto curr_view_opt_str = view_option_to_string(view_options[i]);
+            if (ImGui::Selectable(curr_view_opt_str.data(), is_selected)) {
+               curr_view_opt[static_cast<int>(type)] = view_options[i];
             }
 
             if (is_selected) {
@@ -354,12 +376,16 @@ void GuiContext::show_memory_view(MemoryViewType type, int default_height) {
          ImGui::TableSetupColumn("##memory-contents", ImGuiTableColumnFlags_WidthStretch);
 
          std::span<std::uint16_t> hack_mem { };
+         std::uint16_t mem_addr = 0;
+
          switch (type) {
          case MemoryViewType::RAM:
+            mem_addr = _hack.address_reg;
             hack_mem = _hack.data_mem;
             break;
          case MemoryViewType::ROM:
             hack_mem = _hack.instruction_mem;
+            mem_addr = _hack.pc;
             break;
          case MemoryViewType::Count:
             break;
@@ -370,33 +396,28 @@ void GuiContext::show_memory_view(MemoryViewType type, int default_height) {
          clipper.Begin(hack_mem.size());
          while (clipper.Step()) {
             for (auto i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
-               ImGui::TableNextRow();
                ImGui::PushID(i);
+               ImGui::TableNextRow();
                ImGui::TableNextColumn();
                ImGui::Text("%d", static_cast<int>(i));
 
                ImGui::TableNextColumn();
                ImGui::SetNextItemWidth(-FLT_MIN);
-               ImGui::InputScalarN("##mem_address", ImGuiDataType_U16, &hack_mem[i], 1);
 
-               int mem_addr = 0;
-               switch (type) {
-               case MemoryViewType::RAM:
-                  mem_addr = _hack.data_reg;
-                  break;
-               case MemoryViewType::ROM:
-                  mem_addr = _hack.pc;
-                  break;
-               case MemoryViewType::Count:
+               switch (curr_view_opt[static_cast<int>(type)]) {
+               case MemoryViewOption::Asm: {
+                  auto inst_opt = assembly::disassemble(hack_mem[i]);
+                  auto inst = inst_opt.has_value() ? inst_opt.value() : "(invalid asm)";
+                  ImGui::InputText("##mem_asm", inst.data(), inst.size());
                   break;
                }
-
-               if (_hack_state == HackState::StepThrough || _hack_state == HackState::Running) {
-                  set_memory_view_scroll(mem_addr);
-               }
-
-               if (_hack_state == HackState::Reset) {
-                  set_memory_view_scroll(0);
+               case MemoryViewOption::Bin:
+                  break;
+               case MemoryViewOption::Dec:
+                  ImGui::InputScalarN("##mem_address", ImGuiDataType_U16, &hack_mem[i], 1);
+                  break;
+               case MemoryViewOption::Hex:
+                  break;
                }
 
                if (ImGui::TableGetHoveredRow() == i) {
@@ -405,13 +426,22 @@ void GuiContext::show_memory_view(MemoryViewType type, int default_height) {
                } else if (ImGui::IsItemActive()) {
                   ImGui::TableSetBgColor(
                       ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImGuiCol_HeaderActive));
-               } else if (mem_addr == i && _hack_state != HackState::Off) {
+               } else if (mem_addr == i  && _hack_state != HackState::Off) {
                   ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(Color::RED));
                }
 
                ImGui::PopID();
             }
          }
+
+         if (_hack_state == HackState::StepThrough || _hack_state == HackState::Running) {
+            set_memory_view_scroll(mem_addr);
+         }
+
+         if (_hack_state == HackState::Reset) {
+            set_memory_view_scroll(0);
+         }
+
          ImGui::EndTable();
       }
    }
