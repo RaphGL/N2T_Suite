@@ -21,6 +21,7 @@ enum class MemoryViewType : int {
 };
 
 enum class HackState {
+   Off,
    Running,
    Stopped,
    StepThrough,
@@ -46,7 +47,7 @@ class GuiContext final {
 
    // ==== Virtual Machine Runtime
    Hack _hack { };
-   std::atomic<HackState> _hack_state = HackState::Stopped;
+   std::atomic<HackState> _hack_state = HackState::Off;
    std::atomic<std::optional<SDL_Keycode>> _hack_key;
    // how fast the processor runs
    float _hack_speed = 1.0f;
@@ -63,6 +64,7 @@ class GuiContext final {
    std::optional<fs::path> dialog_get_file();
 
    void clear_hack_memory(MemoryViewType type);
+   void __snow_memory_view_set_scroll(int row);
 
    public:
    explicit GuiContext(SDL_Window *window);

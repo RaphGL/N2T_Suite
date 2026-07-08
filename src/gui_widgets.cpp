@@ -13,6 +13,7 @@
 #include <cmath>
 #include <cstdint>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <iostream>
 #include <optional>
@@ -45,6 +46,8 @@ GuiContext::GuiContext(SDL_Window *window)
          auto frame_start = chrono::high_resolution_clock::now();
          try {
             switch (_hack_state) {
+            case HackState::Off:
+               [[fallthrough]];
             case HackState::Stopped:
                std::this_thread::sleep_for(chrono::milliseconds(30));
                break;
@@ -125,6 +128,7 @@ GuiContext::GuiContext(SDL_Window *window)
 
             _hack.load_rom(machine_code.value());
             push_log(LogType::Success, "ROM Loaded.");
+            _hack_state = HackState::Stopped;
          } else if (file_ext == ".jack") {
             // TODO: compile once compiler is made
          } else if (file_ext == ".vm") {
@@ -138,6 +142,7 @@ GuiContext::GuiContext(SDL_Window *window)
                    "Failed to load Hack ROM, please check that the file contains valid hack "
                    "machine code.");
             }
+            _hack_state = HackState::Stopped;
          } else {
             push_log(LogType::Error, "File contains an invalid extension.");
          }
@@ -257,6 +262,19 @@ void GuiContext::clear_hack_memory(MemoryViewType type) {
    }
 }
 
+void GuiContext::__snow_memory_view_set_scroll(int row) {
+   if (_hack_state == HackState::StepThrough || _hack_state == HackState::Running) {
+      auto curr_style = ImGui::GetStyle();
+      auto row_height = ImGui::GetTextLineHeightWithSpacing() + curr_style.CellPadding.y
+          + curr_style.ItemSpacing.y;
+      auto view_point = row;
+      if (view_point > 3) {
+         view_point -= 3;
+      }
+      ImGui::SetScrollY(row_height * view_point);
+   }
+}
+
 void GuiContext::show_memory_view(MemoryViewType type, int default_height) {
    std::string_view label;
    switch (type) {
@@ -342,7 +360,6 @@ void GuiContext::show_memory_view(MemoryViewType type, int default_height) {
             for (auto i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
                ImGui::TableNextRow();
                ImGui::PushID(i);
-
                ImGui::TableNextColumn();
                ImGui::Text("%d", static_cast<int>(i));
 
@@ -357,6 +374,26 @@ void GuiContext::show_memory_view(MemoryViewType type, int default_height) {
                if (ImGui::TableGetHoveredRow() == i) {
                   ImGui::TableSetBgColor(
                       ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImGuiCol_HeaderHovered));
+               }
+
+               int mem_addr = 0;
+               switch (type) {
+               case MemoryViewType::RAM:
+                  mem_addr = _hack.data_reg;
+                  break;
+               case MemoryViewType::ROM:
+                  mem_addr = _hack.pc;
+                  break;
+               case MemoryViewType::Count:
+                  break;
+               }
+
+               __snow_memory_view_set_scroll(mem_addr);
+
+               if (mem_addr == i && _hack_state != HackState::Off) {
+                  ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0,
+                      ImGui::GetColorU32(
+                          ImVec4(0xFF / 255.0f, 0x55 / 255.0f, 0x55 / 255.0f, 0xFF / 255.0f)));
                }
                ImGui::PopID();
             }
