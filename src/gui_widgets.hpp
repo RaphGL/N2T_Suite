@@ -14,8 +14,11 @@ namespace fs = std::filesystem;
 namespace gui {
 
 enum class MemoryViewType : int {
-   ROM = 0,
-   RAM = 1,
+   ROM,
+   RAM,
+
+
+   Count,
 };
 
 enum class HackState {
@@ -72,7 +75,7 @@ class GuiContext final {
    void load_program();
 
    // ==== Widgets API
-   void show_memory_view(MemoryViewType type);
+   void show_memory_view(MemoryViewType type, int height = 0);
    void show_menu_bar();
    void show_top_bar();
    void show_hack_screen();

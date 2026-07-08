@@ -4,6 +4,7 @@
 #include "asm/parser.hpp"
 #include "hack/hack.hpp"
 #include "imgui.h"
+#include "imgui_internal.h"
 #include <array>
 
 #include <atomic>
@@ -238,18 +239,21 @@ void GuiContext::clear_hack_memory(MemoryViewType type) {
    case MemoryViewType::ROM:
       std::fill(_hack.instruction_mem.begin(), _hack.instruction_mem.end(), 0);
       break;
+   case MemoryViewType::Count:
+      break;
    }
 }
 
-void GuiContext::show_memory_view(MemoryViewType type) {
+void GuiContext::show_memory_view(MemoryViewType type, int default_height) {
    std::string_view label;
    switch (type) {
    case MemoryViewType::RAM:
       label = "RAM";
       break;
-
    case MemoryViewType::ROM:
       label = "ROM";
+      break;
+   case MemoryViewType::Count:
       break;
    }
 
@@ -272,7 +276,8 @@ void GuiContext::show_memory_view(MemoryViewType type) {
          // TODO
       }
 
-      static std::array<std::size_t, 2> curr_view_opt = { 0, 1 };
+      static std::array<std::size_t, static_cast<int>(MemoryViewType::Count)> curr_view_opt
+          = { 0, 1 };
       std::array<std::string_view, 4> view_options {
          "assembly",
          "binary",
@@ -299,9 +304,10 @@ void GuiContext::show_memory_view(MemoryViewType type) {
       }
       ImGui::PopID();
       ImGui::EndGroup();
+      auto buttons_height = ImGui::GetItemRectSize().y + ImGui::GetStyle().ItemSpacing.y + 2;
 
       if (ImGui::BeginTable(label.data(), 2, ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersOuter,
-              ImVec2(0, 350))) {
+              ImVec2(0, default_height - buttons_height))) {
          ImGui::TableSetupColumn("##address", ImGuiTableColumnFlags_WidthFixed, 50);
          ImGui::TableSetupColumn("##memory-contents", ImGuiTableColumnFlags_WidthStretch);
 
@@ -313,6 +319,8 @@ void GuiContext::show_memory_view(MemoryViewType type) {
          case MemoryViewType::ROM:
             hack_mem = _hack.instruction_mem;
             break;
+         case MemoryViewType::Count:
+            break;
          }
 
          // necessary otherwise the performance would crawl with 32K items to render
@@ -321,14 +329,23 @@ void GuiContext::show_memory_view(MemoryViewType type) {
          while (clipper.Step()) {
             for (auto i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
                ImGui::TableNextRow();
-
                ImGui::PushID(i);
+
                ImGui::TableNextColumn();
                ImGui::Text("%d", static_cast<int>(i));
 
                ImGui::TableNextColumn();
                ImGui::SetNextItemWidth(-FLT_MIN);
                ImGui::InputScalarN("##mem_address", ImGuiDataType_U16, &hack_mem[i], 1);
+               if (ImGui::IsItemActive()) {
+                  ImGui::TableSetBgColor(
+                      ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImGuiCol_HeaderActive));
+               }
+
+               if (ImGui::TableGetHoveredRow() == i) {
+                  ImGui::TableSetBgColor(
+                      ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImGuiCol_HeaderHovered));
+               }
                ImGui::PopID();
             }
          }

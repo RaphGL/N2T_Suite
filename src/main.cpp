@@ -302,19 +302,21 @@ int gui_cmd(std::span<char *> args) {
       ImGui::SetNextWindowSize(viewport->WorkSize);
 
       ImGuiWindowFlags winflags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove
-          | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoSavedSettings;
+          | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoSavedSettings
+          | ImGuiWindowFlags_NoScrollWithMouse;
       if (ImGui::Begin("N2T Suite", nullptr, winflags)) {
 
          w.show_menu_bar();
          w.show_top_bar();
 
+         auto region_avail = ImGui::GetContentRegionAvail();
          if (ImGui::BeginTable("memory-view", 2)) {
             ImGui::TableSetupColumn("Memory View", ImGuiTableColumnFlags_WidthStretch, 0.3f);
             ImGui::TableSetupColumn("Screen", ImGuiTableColumnFlags_WidthStretch, 0.7f);
 
             ImGui::TableNextColumn();
-            w.show_memory_view(gui::MemoryViewType::ROM);
-            w.show_memory_view(gui::MemoryViewType::RAM);
+            w.show_memory_view(gui::MemoryViewType::ROM, region_avail.y / 2);
+            w.show_memory_view(gui::MemoryViewType::RAM, region_avail.y / 2);
 
             ImGui::TableNextColumn();
             w.show_hack_screen();
