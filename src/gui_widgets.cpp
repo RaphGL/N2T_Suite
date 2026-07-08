@@ -13,7 +13,6 @@
 #include <cmath>
 #include <cstdint>
 #include <filesystem>
-#include <format>
 #include <fstream>
 #include <iostream>
 #include <optional>
@@ -151,6 +150,21 @@ GuiContext::GuiContext(SDL_Window *window)
 }
 
 GuiContext::~GuiContext() { glDeleteTextures(1, &_hack_screen_tex); }
+
+consteval ImVec4 rgba_to_imvec4(uint32_t rgba) {
+   float r = rgba >> 24 & 0xFF;
+   float g = rgba >> 16 & 0xFF;
+   float b = rgba >> 8 & 0xFF;
+   float a = rgba >> 0 & 0xFF;
+   return ImVec4(r / 0xFF, g / 0xFF, b / 0xFF, a / 0xFF);
+}
+
+consteval ImVec4 rgb_to_imvec4(uint32_t rgb) { return rgba_to_imvec4(rgb << 8 | 0x000000FF); }
+
+namespace Color {
+   constexpr auto RED = rgb_to_imvec4(0xFF5555);
+   constexpr auto GREEN = rgb_to_imvec4(0x50FA7B);
+};
 
 void GuiContext::set_keyboard_input(std::optional<SDL_Keycode> key) { _hack_key = key; }
 
@@ -391,11 +405,9 @@ void GuiContext::show_memory_view(MemoryViewType type, int default_height) {
                } else if (ImGui::IsItemActive()) {
                   ImGui::TableSetBgColor(
                       ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImGuiCol_HeaderActive));
-               } else
-                   if (mem_addr == i && _hack_state != HackState::Off) {
-                  ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0,
-                      ImGui::GetColorU32(
-                          ImVec4(0xFF / 255.0f, 0x55 / 255.0f, 0x55 / 255.0f, 0xFF / 255.0f)));
+               } else if (mem_addr == i && _hack_state != HackState::Off) {
+                  ImGui::TableSetBgColor(
+                      ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(Color::RED));
                }
 
                ImGui::PopID();
@@ -487,13 +499,11 @@ void GuiContext::show_logs(int default_height) {
          auto log = _logs.at(i);
          switch (log.type) {
          case LogType::Error:
-            ImGui::PushStyleColor(
-                ImGuiCol_Text, ImVec4(0xFF / 255.0f, 0x55 / 255.0f, 0x55 / 255.0f, 0xFF / 255.0f));
+            ImGui::PushStyleColor(ImGuiCol_Text, Color::RED);
             ImGui::TextUnformatted("Error: ");
             break;
          case LogType::Success:
-            ImGui::PushStyleColor(
-                ImGuiCol_Text, ImVec4(0x50 / 255.0f, 0xFA / 255.0f, 0x7B / 255.0f, 0xFF / 255.0f));
+            ImGui::PushStyleColor(ImGuiCol_Text, Color::GREEN);
             ImGui::TextUnformatted("Success: ");
             break;
          }

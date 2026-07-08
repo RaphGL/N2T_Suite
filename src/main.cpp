@@ -258,7 +258,6 @@ int gui_cmd(std::span<char *> args) {
    auto &io = ImGui::GetIO();
    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
-   ImGui::StyleColorsDark();
    auto &style = ImGui::GetStyle();
    style.ScaleAllSizes(main_scale);
    style.FontScaleDpi = main_scale;
@@ -269,7 +268,19 @@ int gui_cmd(std::span<char *> args) {
    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
    gui::GuiContext w { window };
-   w.set_styling();
+
+   auto update_theme = [&w] {
+      auto system_theme = SDL_GetSystemTheme();
+      if (system_theme == SDL_SYSTEM_THEME_DARK || system_theme == SDL_SYSTEM_THEME_UNKNOWN) {
+         ImGui::StyleColorsDark();
+      } else {
+         ImGui::StyleColorsLight();
+      }
+      // TODO: add light and dark theme variants
+      w.set_styling();
+   };
+
+   update_theme();
 
    for (;;) {
       SDL_Event e;
@@ -286,6 +297,10 @@ int gui_cmd(std::span<char *> args) {
          case SDL_EVENT_KEY_UP:
             w.set_keyboard_input(std::nullopt);
             break;
+
+         case SDL_EVENT_SYSTEM_THEME_CHANGED:
+            update_theme();
+            break;
          }
       }
 
@@ -300,6 +315,7 @@ int gui_cmd(std::span<char *> args) {
       const ImGuiViewport *viewport = ImGui::GetMainViewport();
       ImGui::SetNextWindowPos(viewport->WorkPos);
       ImGui::SetNextWindowSize(viewport->WorkSize);
+      ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
 
       ImGuiWindowFlags winflags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove
           | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoSavedSettings
@@ -334,6 +350,7 @@ int gui_cmd(std::span<char *> args) {
          ImGui::End();
       }
 
+      ImGui::PopStyleVar();
       ImGui::Render();
       glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
       glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w,
