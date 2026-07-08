@@ -324,8 +324,10 @@ int gui_cmd(std::span<char *> args) {
             ImGui::TableNextColumn();
             ImGui::SeparatorText("Screen");
             w.show_hack_screen();
+            region_avail = ImGui::GetContentRegionAvail();
             ImGui::SeparatorText("Logs");
-            w.show_logs();
+            w.show_logs(
+                region_avail.y - ImGui::GetItemRectSize().y - ImGui::GetStyle().ItemSpacing.y);
 
             ImGui::EndTable();
          }

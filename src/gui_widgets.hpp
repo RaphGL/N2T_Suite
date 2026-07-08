@@ -17,7 +17,6 @@ enum class MemoryViewType : int {
    ROM,
    RAM,
 
-
    Count,
 };
 
@@ -80,7 +79,7 @@ class GuiContext final {
    void show_top_bar();
    void show_hack_screen();
    void show_modal_message(const char *name, const char *msg);
-   void show_logs();
+   void show_logs(int default_height = 0);
 };
 }
 

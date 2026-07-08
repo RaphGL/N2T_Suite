@@ -429,14 +429,14 @@ void GuiContext::push_log(LogType type, const char *msg) {
    _logs_mutex.unlock();
 }
 
-void GuiContext::show_logs() {
+void GuiContext::show_logs(int default_height) {
+   ImGui::BeginChild("logs", ImVec2(0, default_height), ImGuiChildFlags_Borders);
    if (ImGui::Button("Clear")) {
       _logs.clear();
    }
-   ImGui::BeginChild("logs", ImVec2(0, 200), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeY);
-   ImGui::PushFont(MONOFONT);
    ImGui::Dummy(ImVec2(0, 5));
 
+   ImGui::PushFont(MONOFONT);
    ImGuiListClipper clipper;
    clipper.Begin(_logs.size());
 
@@ -457,6 +457,7 @@ void GuiContext::show_logs() {
          }
          ImGui::SameLine();
          ImGui::TextUnformatted(log.msg.data());
+         ImGui::Spacing();
          ImGui::PopStyleColor();
       }
    }
