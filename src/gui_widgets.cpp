@@ -7,6 +7,7 @@
 #include <array>
 
 #include <atomic>
+#include <cfloat>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
@@ -426,7 +427,7 @@ void GuiContext::show_memory_view(MemoryViewType type, int default_height) {
                } else if (ImGui::IsItemActive()) {
                   ImGui::TableSetBgColor(
                       ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImGuiCol_HeaderActive));
-               } else if (mem_addr == i  && _hack_state != HackState::Off) {
+               } else if (mem_addr == i && _hack_state != HackState::Off) {
                   ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(Color::RED));
                }
 
@@ -588,6 +589,31 @@ void GuiContext::show_hack_screen() {
    ImGui::PopStyleVar();
    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + padding_x);
    ImGui::Dummy(ImVec2(0, 10));
+}
+
+void GuiContext::show_hack_registers() {
+   // TODO: improve layout
+   ImGui::BeginChild("##hack-registers", ImVec2(0, ImGui::GetTextLineHeightWithSpacing() + 20), ImGuiChildFlags_Borders);
+   if (ImGui::BeginTable("hack-registers", 3, 0, ImVec2(300, 0))) {
+      ImGui::TableNextRow();
+      ImGui::TableNextColumn();
+      ImGui::TextUnformatted("A:");
+      ImGui::SameLine();
+      ImGui::Text("%d", _hack.address_reg);
+
+      ImGui::TableNextColumn();
+      ImGui::TextUnformatted("D:");
+      ImGui::SameLine();
+      ImGui::Text("%d", _hack.data_reg);
+
+      ImGui::TableNextColumn();
+      ImGui::TextUnformatted("PC:");
+      ImGui::SameLine();
+      ImGui::Text("%d", _hack.pc);
+
+      ImGui::EndTable();
+   }
+   ImGui::EndChild();
 }
 
 }

@@ -20,6 +20,7 @@
 #include <iostream>
 #include <optional>
 #include <span>
+#include <sstream>
 
 namespace chrono = std::chrono;
 namespace fs = std::filesystem;
@@ -51,6 +52,7 @@ int asm_cmd(std::span<char *> args) {
    const fs::path file = args[0];
    if (!fs::exists(file)) {
       std::cerr << "File does not exist.\n";
+      return 1;
    }
    std::optional<const char *> output_flag { };
 
@@ -99,6 +101,29 @@ int asm_cmd(std::span<char *> args) {
 
    std::ofstream asm_file { output_file.filename() };
    asm_file.write(output.c_str(), output.size());
+   return 0;
+}
+
+int disasm_cmd(std::span<char *> args) {
+   if (args.size() == 0) {
+      std::cout << "Missing file argument.\n";
+      return 1;
+   }
+
+   fs::path file { args[0] };
+   std::ifstream input { file };
+   std::stringstream ss;
+   ss << input.rdbuf();
+
+   auto disasm = assembly::disassemble(ss.str());
+   if (!disasm.has_value()) {
+      std::cerr << "Failed to disassemble file. It is possibly not a valid Hack ROM.\n";
+      return 1;
+   }
+
+   file.replace_extension(".disasm");
+   std::ofstream disasm_file { file };
+   disasm_file << disasm.value();
    return 0;
 }
 
@@ -328,6 +353,8 @@ int gui_cmd(std::span<char *> args) {
             ImGui::TableSetupColumn("Screen", ImGuiTableColumnFlags_WidthStretch, 0.7f);
 
             ImGui::TableNextColumn();
+            ImGui::SeparatorText("Registers");
+            w.show_hack_registers();
             ImGui::SeparatorText("ROM");
             auto region_avail = ImGui::GetContentRegionAvail();
             w.show_memory_view(gui::MemoryViewType::ROM, region_avail.y / 2);
@@ -376,6 +403,7 @@ void print_help(const char *program) {
                             "Commands:\n"
                             "\trun\tRun the hack emulator\n"
                             "\tasm\tCompile assembly into hack instructions\n"
+                            "disasm\tDisassemble hack instructions\n"
                             "\thdl\tResolve hdl circuit\n"
                             "\tgui\tRun N2T GUI suite\n"
                             "\thelp\tPrint this message\n",
@@ -401,6 +429,10 @@ int main(int argc, char *argv[]) {
 
    if (cmd == "asm") {
       return asm_cmd(cmd_args);
+   }
+
+   if (cmd == "disasm") {
+      return disasm_cmd(cmd_args);
    }
 
    if (cmd == "hdl") {

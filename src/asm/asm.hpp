@@ -172,5 +172,5 @@ class CodeGen {
 std::string to_string(std::vector<std::uint16_t> asm_instructions);
 
 std::optional<std::string> disassemble(std::uint16_t instruction);
-
+std::optional<std::string> disassemble(std::string_view instructions);
 }

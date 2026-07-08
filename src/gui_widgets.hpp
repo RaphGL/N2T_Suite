@@ -5,9 +5,9 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_opengl.h>
 #include <filesystem>
-#include <string_view>
 #include <mutex>
 #include <optional>
+#include <string_view>
 #include <thread>
 
 namespace fs = std::filesystem;
@@ -22,10 +22,10 @@ enum class MemoryViewType : int {
 };
 
 enum class MemoryViewOption {
-  Asm, 
-  Hex,
-  Bin,
-  Dec,
+   Asm,
+   Hex,
+   Bin,
+   Dec,
 
 };
 
@@ -89,6 +89,7 @@ class GuiContext final {
    void show_menu_bar();
    void show_top_bar();
    void show_hack_screen();
+   void show_hack_registers();
    void show_modal_message(const char *name, const char *msg);
    void show_logs(int default_height = 0);
 };

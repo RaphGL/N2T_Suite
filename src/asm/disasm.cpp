@@ -1,6 +1,7 @@
 #include <cstdint>
 #include <format>
 #include <optional>
+#include <sstream>
 #include <string>
 
 namespace assembly {
@@ -10,7 +11,7 @@ std::optional<std::string> disassemble(std::uint16_t instruction) {
    constexpr std::uint16_t cinstr_flag = 0b111 << 13;
    constexpr std::uint16_t ainst_flag = 1 << 15;
 
-   if (instruction & cinstr_flag) {
+   if ((instruction & cinstr_flag) == cinstr_flag) {
       std::uint16_t a = (instruction >> 12) & 1;
       std::uint16_t comp = (instruction >> 6) & 0b111111;
       std::uint16_t dest = (instruction >> 3) & 0b111;
@@ -41,64 +42,75 @@ std::optional<std::string> disassemble(std::uint16_t instruction) {
             inst_str += "AMD";
             break;
          }
-         inst_str += '=';
       }
 
+      std::string comp_str;
+      bool valid_comp = true;
       switch (comp) {
       case 0b101010:
-         inst_str += '0';
+         comp_str += '0';
          break;
       case 0b111111:
-         inst_str += '1';
+         comp_str += '1';
          break;
       case 0b111010:
-         inst_str += "-1";
+         comp_str += "-1";
          break;
       case 0b001100:
-         inst_str += 'D';
+         comp_str += 'D';
          break;
       case 0b110000:
-         inst_str += a ? 'M' : 'A';
+         comp_str += a ? 'M' : 'A';
          break;
       case 0b001101:
-         inst_str += "!D";
+         comp_str += "!D";
          break;
       case 0b110001:
-         inst_str += a ? "!M" : "!A";
+         comp_str += a ? "!M" : "!A";
          break;
       case 0b001111:
-         inst_str += "-D";
+         comp_str += "-D";
          break;
       case 0b110011:
-         inst_str += a ? "-M" : "-A";
+         comp_str += a ? "-M" : "-A";
          break;
       case 0b011111:
-         inst_str += "D+1";
+         comp_str += "D+1";
          break;
       case 0b110111:
-         inst_str += a ? "M+1" : "A+1";
+         comp_str += a ? "M+1" : "A+1";
          break;
       case 0b001110:
-         inst_str += "D-1";
+         comp_str += "D-1";
          break;
       case 0b110010:
-         inst_str += a ? "M-1" : "A-1";
+         comp_str += a ? "M-1" : "A-1";
          break;
       case 0b000010:
-         inst_str += a ? "M+A" : "D+A";
+         comp_str += a ? "D+M" : "D+A";
          break;
       case 0b010011:
-         inst_str += a ? "D-M" : "D-A";
+         comp_str += a ? "D-M" : "D-A";
          break;
       case 0b000111:
-         inst_str += a ? "M-D" : "A-D";
+         comp_str += a ? "M-D" : "A-D";
          break;
       case 0b000000:
-         inst_str += a ? "D&M" : "D&A";
+         comp_str += a ? "D&M" : "D&A";
          break;
       case 0b010101:
-         inst_str += a ? "D|M" : "D|A";
+         comp_str += a ? "D|M" : "D|A";
          break;
+      default:
+         valid_comp = false;
+         break;
+      }
+
+      if (valid_comp) {
+         if (dest) {
+            inst_str += '=';
+         }
+         inst_str += comp_str;
       }
 
       if (jump) {
@@ -136,5 +148,27 @@ std::optional<std::string> disassemble(std::uint16_t instruction) {
    }
 
    return std::nullopt;
+}
+
+std::optional<std::string> disassemble(std::string_view instructions) {
+   std::stringstream inststream { instructions.data() };
+   std::string asm_str;
+
+   std::string tmp { };
+   while (std::getline(inststream, tmp)) {
+      try {
+         auto inst = std::stoull(tmp, nullptr, 2);
+         auto inst_str = disassemble(inst);
+         if (!inst_str.has_value()) {
+            return std::nullopt;
+         }
+         asm_str += inst_str.value();
+         asm_str += '\n';
+      } catch (...) {
+         return std::nullopt;
+      }
+   }
+
+   return asm_str;
 }
 };
