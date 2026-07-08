@@ -64,7 +64,7 @@ class GuiContext final {
    std::optional<fs::path> dialog_get_file();
 
    void clear_hack_memory(MemoryViewType type);
-   void __snow_memory_view_set_scroll(int row);
+   void set_memory_view_scroll(int row);
 
    public:
    explicit GuiContext(SDL_Window *window);

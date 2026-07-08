@@ -262,17 +262,15 @@ void GuiContext::clear_hack_memory(MemoryViewType type) {
    }
 }
 
-void GuiContext::__snow_memory_view_set_scroll(int row) {
-   if (_hack_state == HackState::StepThrough || _hack_state == HackState::Running) {
-      auto curr_style = ImGui::GetStyle();
-      auto row_height = ImGui::GetTextLineHeightWithSpacing() + curr_style.CellPadding.y
-          + curr_style.ItemSpacing.y;
-      auto view_point = row;
-      if (view_point > 3) {
-         view_point -= 3;
-      }
-      ImGui::SetScrollY(row_height * view_point);
+void GuiContext::set_memory_view_scroll(int row) {
+   auto curr_style = ImGui::GetStyle();
+   auto row_height = ImGui::GetTextLineHeightWithSpacing() + curr_style.CellPadding.y
+       + curr_style.ItemSpacing.y;
+   auto view_point = row;
+   if (view_point > 3) {
+      view_point -= 3;
    }
+   ImGui::SetScrollY(row_height * view_point);
 }
 
 void GuiContext::show_memory_view(MemoryViewType type, int default_height) {
@@ -366,15 +364,6 @@ void GuiContext::show_memory_view(MemoryViewType type, int default_height) {
                ImGui::TableNextColumn();
                ImGui::SetNextItemWidth(-FLT_MIN);
                ImGui::InputScalarN("##mem_address", ImGuiDataType_U16, &hack_mem[i], 1);
-               if (ImGui::IsItemActive()) {
-                  ImGui::TableSetBgColor(
-                      ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImGuiCol_HeaderActive));
-               }
-
-               if (ImGui::TableGetHoveredRow() == i) {
-                  ImGui::TableSetBgColor(
-                      ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImGuiCol_HeaderHovered));
-               }
 
                int mem_addr = 0;
                switch (type) {
@@ -388,13 +377,27 @@ void GuiContext::show_memory_view(MemoryViewType type, int default_height) {
                   break;
                }
 
-               __snow_memory_view_set_scroll(mem_addr);
+               if (_hack_state == HackState::StepThrough || _hack_state == HackState::Running) {
+                  set_memory_view_scroll(mem_addr);
+               }
 
-               if (mem_addr == i && _hack_state != HackState::Off) {
+               if (_hack_state == HackState::Reset) {
+                  set_memory_view_scroll(0);
+               }
+
+               if (ImGui::TableGetHoveredRow() == i) {
+                  ImGui::TableSetBgColor(
+                      ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImGuiCol_HeaderHovered));
+               } else if (ImGui::IsItemActive()) {
+                  ImGui::TableSetBgColor(
+                      ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImGuiCol_HeaderActive));
+               } else
+                   if (mem_addr == i && _hack_state != HackState::Off) {
                   ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0,
                       ImGui::GetColorU32(
                           ImVec4(0xFF / 255.0f, 0x55 / 255.0f, 0x55 / 255.0f, 0xFF / 255.0f)));
                }
+
                ImGui::PopID();
             }
          }
@@ -471,8 +474,8 @@ void GuiContext::show_logs(int default_height) {
    if (ImGui::Button("Clear")) {
       _logs.clear();
    }
-   ImGui::Dummy(ImVec2(0, 5));
 
+   ImGui::BeginChild("##log-console");
    ImGui::PushFont(MONOFONT);
    ImGuiListClipper clipper;
    clipper.Begin(_logs.size());
@@ -499,6 +502,7 @@ void GuiContext::show_logs(int default_height) {
       }
    }
    ImGui::PopFont();
+   ImGui::EndChild();
    ImGui::EndChild();
 }
 
