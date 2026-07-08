@@ -37,33 +37,46 @@
 
 <!-- ABOUT THE PROJECT -->
 
-N2T_Suite is a Nand2Tetris suite written in C++20 with the goal of improving error messages and overall UX to reduce learner's friction while following the book or the course.
-It takes inspiration from both the Java suite and the Web IDEs provided by the original authors and strives to follow the overall behavior of the original Java suite whenever possible and 
-does not impact usability.
+N2T_Suite is a Nand2Tetris suite written in C++20 with the goal of improving error messages and overall UX to reduce friction for students while following the book or the online course.
+It takes inspiration from both the Java suite and the Web IDE provided by the original authors and aims to follow the behavior of the original Java suite whenever it doesn't impact usability.
 
+> [!NOTE]
+> The suite is still being developed and currently is still missing features.
 
 ### Built With
 
 - C++20
-- QT 6 (todo!!!)
-
-<!-- GETTING STARTED -->
+- [Dear ImGui](https://github.com/ocornut/imgui)
+- [SDL3](https://github.com/libsdl-org/SDL)
 
 ## Getting Started
 
 ### Installation
 
-TODO
-
-<!-- USAGE EXAMPLES -->
+TODO: talk about how to compile
 
 ## Usage
+The N2T Suite aims to support use from both the GUI and the CLI.
 
-TODO
+The help message for the CLI.
+```
+./n2t - nand2tetris development suite
+
+Usage: ./n2t <COMMAND> [FILE]
+
+Commands:
+	run	Run the hack emulator
+	asm	Compile assembly into hack instructions
+	hdl	Resolve hdl circuit
+	gui	Run N2T GUI suite
+	help	Print this message
+```
+
+TODO: show screenshot once the GUI is more mature.
 
 ## License
 
-Distributed under the GPLv3 License. See [`LICENSE`](https://github.com/RaphGL/N2T_Suite/blob/main/LICENSE) for more information.
+Distributed under the EUPL 1.2 License. See [`LICENSE`](https://github.com/RaphGL/N2T_Suite/blob/main/LICENSE) for more information.
 
 ## Acknowledgements
 
