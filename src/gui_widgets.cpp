@@ -406,8 +406,7 @@ void GuiContext::show_memory_view(MemoryViewType type, int default_height) {
                   ImGui::TableSetBgColor(
                       ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImGuiCol_HeaderActive));
                } else if (mem_addr == i && _hack_state != HackState::Off) {
-                  ImGui::TableSetBgColor(
-                      ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(Color::RED));
+                  ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(Color::RED));
                }
 
                ImGui::PopID();
@@ -513,6 +512,7 @@ void GuiContext::show_logs(int default_height) {
          ImGui::PopStyleColor();
       }
    }
+
    ImGui::PopFont();
    ImGui::EndChild();
    ImGui::EndChild();
@@ -541,7 +541,7 @@ void GuiContext::show_hack_screen() {
    ImVec2 screen_size = ImVec2(0, 0);
    ImVec2 avail_size = ImGui::GetContentRegionAvail();
    screen_size.x = avail_size.x;
-   screen_size.y = avail_size.y * 0.6f;
+   screen_size.y = screen_size.x * 0.5f;
 
    float padding_x = (avail_size.x - screen_size.x) / 2;
    if (padding_x > 0.0f) {
