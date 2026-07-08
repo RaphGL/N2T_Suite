@@ -286,11 +286,11 @@ int gui_cmd(std::span<char *> args) {
          case SDL_EVENT_KEY_UP:
             w.set_keyboard_input(std::nullopt);
             break;
-
-         case SDL_EVENT_WINDOW_MINIMIZED:
-            SDL_Delay(10);
-            break;
          }
+      }
+
+      if (SDL_GetWindowFlags(window) & SDL_WINDOW_MINIMIZED) {
+         SDL_Delay(16);
       }
 
       ImGui_ImplOpenGL3_NewFrame();
@@ -309,17 +309,22 @@ int gui_cmd(std::span<char *> args) {
          w.show_menu_bar();
          w.show_top_bar();
 
-         auto region_avail = ImGui::GetContentRegionAvail();
          if (ImGui::BeginTable("memory-view", 2)) {
             ImGui::TableSetupColumn("Memory View", ImGuiTableColumnFlags_WidthStretch, 0.3f);
             ImGui::TableSetupColumn("Screen", ImGuiTableColumnFlags_WidthStretch, 0.7f);
 
             ImGui::TableNextColumn();
+            ImGui::SeparatorText("ROM");
+            auto region_avail = ImGui::GetContentRegionAvail();
             w.show_memory_view(gui::MemoryViewType::ROM, region_avail.y / 2);
-            w.show_memory_view(gui::MemoryViewType::RAM, region_avail.y / 2);
+            ImGui::SeparatorText("RAM");
+            region_avail = ImGui::GetContentRegionAvail();
+            w.show_memory_view(gui::MemoryViewType::RAM, region_avail.y);
 
             ImGui::TableNextColumn();
+            ImGui::SeparatorText("Screen");
             w.show_hack_screen();
+            ImGui::SeparatorText("Logs");
             w.show_logs();
 
             ImGui::EndTable();

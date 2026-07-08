@@ -5,6 +5,7 @@
 #include "hack/hack.hpp"
 #include "imgui.h"
 #include "imgui_internal.h"
+#include <algorithm>
 #include <array>
 
 #include <atomic>
@@ -75,6 +76,7 @@ GuiContext::GuiContext(SDL_Window *window)
             }
          } catch (std::out_of_range) {
             _hack_state = HackState::Stopped;
+            push_log(LogType::Error, "Failed to run. Check if you have a valid program loaded.");
          }
 
          auto frame_end = chrono::milliseconds(0);
@@ -147,8 +149,10 @@ GuiContext::~GuiContext() { glDeleteTextures(1, &_hack_screen_tex); }
 
 void GuiContext::set_keyboard_input(std::optional<SDL_Keycode> key) { _hack_key = key; }
 
+// TODO: embed default fonts in application
+static ImFont *MONOFONT = nullptr;
 void GuiContext::set_styling() {
-   const char *default_font_path =
+   constexpr auto default_font_path =
 #ifdef _WIN32
        "C:/Windows/Fonts/arial.ttf";
 #elif __APPLE__
@@ -157,8 +161,17 @@ void GuiContext::set_styling() {
        "/usr/share/fonts/TTF/DejaVuSans.ttf";
 #endif
 
+   constexpr auto mono_font =
+#ifdef _WIN32
+       "C:/Windows/Fonts/consola.ttf";
+#elif __APPLE__
+       "/System/Library/Fonts/Monaco.ttf";
+#else
+       "/usr/share/fonts/TTF/DejaVuSansMono.ttf";
+#endif
    auto &io = ImGui::GetIO();
    io.Fonts->AddFontFromFileTTF(default_font_path, 16);
+   MONOFONT = io.Fonts->AddFontFromFileTTF(mono_font, 16.0f);
 }
 
 void GuiContext::dialog_request_file() {
@@ -260,14 +273,13 @@ void GuiContext::show_memory_view(MemoryViewType type, int default_height) {
    ImGui::BeginGroup();
    {
       ImGui::BeginGroup();
-      ImGui::TextUnformatted(label.data());
-      ImGui::SameLine();
-
       ImGui::PushID(label.data());
-      if (type != MemoryViewType::RAM && ImGui::Button("Load")) {
-         load_program();
+      if (type != MemoryViewType::RAM) {
+         if (ImGui::Button("Load")) {
+            load_program();
+         }
+         ImGui::SameLine();
       }
-      ImGui::SameLine();
       if (ImGui::Button("Clear")) {
          clear_hack_memory(type);
       }
@@ -304,7 +316,7 @@ void GuiContext::show_memory_view(MemoryViewType type, int default_height) {
       }
       ImGui::PopID();
       ImGui::EndGroup();
-      auto buttons_height = ImGui::GetItemRectSize().y + ImGui::GetStyle().ItemSpacing.y + 2;
+      auto buttons_height = ImGui::GetItemRectSize().y + ImGui::GetStyle().ItemSpacing.y;
 
       if (ImGui::BeginTable(label.data(), 2, ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersOuter,
               ImVec2(0, default_height - buttons_height))) {
@@ -422,6 +434,7 @@ void GuiContext::show_logs() {
       _logs.clear();
    }
    ImGui::BeginChild("logs", ImVec2(0, 200), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeY);
+   ImGui::PushFont(MONOFONT);
    ImGui::Dummy(ImVec2(0, 5));
 
    ImGuiListClipper clipper;
@@ -447,6 +460,7 @@ void GuiContext::show_logs() {
          ImGui::PopStyleColor();
       }
    }
+   ImGui::PopFont();
    ImGui::EndChild();
 }
 
