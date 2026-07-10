@@ -241,7 +241,7 @@ load_rom:
    return 0;
 }
 
-int gui_cmd(std::span<char *> args) {
+int gui_cmd() {
    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
       std::cerr << SDL_GetError() << '\n';
       return 1;
@@ -403,7 +403,7 @@ void print_help(const char *program) {
                             "Commands:\n"
                             "\trun\tRun the hack emulator\n"
                             "\tasm\tCompile assembly into hack instructions\n"
-                            "disasm\tDisassemble hack instructions\n"
+                            "\tdisasm\tDisassemble hack instructions\n"
                             "\thdl\tResolve hdl circuit\n"
                             "\tgui\tRun N2T GUI suite\n"
                             "\thelp\tPrint this message\n",
@@ -411,21 +411,17 @@ void print_help(const char *program) {
 }
 
 int main(int argc, char *argv[]) {
-   // NOTE: in the future we likely will want a ide command or just launching the
-   // GUI when no arguments are passed
    if (argc == 1) {
-      print_help(argv[0]);
-      return 0;
+      return gui_cmd();
    }
 
    const std::string_view cmd { argv[1] };
+   std::span<char *> cmd_args { &argv[2], static_cast<size_t>(argc - 2) };
 
    if (cmd == "help") {
       print_help(argv[0]);
       return 0;
    }
-
-   std::span<char *> cmd_args { &argv[2], static_cast<size_t>(argc - 2) };
 
    if (cmd == "asm") {
       return asm_cmd(cmd_args);
@@ -444,7 +440,7 @@ int main(int argc, char *argv[]) {
    }
 
    if (cmd == "gui") {
-      return gui_cmd(cmd_args);
+      return gui_cmd();
    }
 
    std::cerr << std::format(
