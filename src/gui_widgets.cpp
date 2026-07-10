@@ -39,7 +39,10 @@ GuiContext::GuiContext(SDL_Window *window)
    }
 
    _hack_worker = std::jthread([this](std::stop_token token) {
-      constexpr int ticks_per_frame = 1400000 / 60;
+      constexpr int frames_per_second = 60;
+      constexpr int ticks_per_frame = 1400000 / frames_per_second;
+      constexpr auto time_per_frame = chrono::seconds(1 / frames_per_second);
+
       while (!token.stop_requested()) {
          auto frame_start = chrono::high_resolution_clock::now();
          try {
@@ -67,7 +70,7 @@ GuiContext::GuiContext(SDL_Window *window)
             case HackState::StepThrough:
                _hack.tick();
                _hack_state = HackState::Stopped;
-               std::this_thread::sleep_for(chrono::milliseconds(30));
+               std::this_thread::sleep_for(time_per_frame);
                break;
 
             case HackState::Reset:
@@ -81,7 +84,7 @@ GuiContext::GuiContext(SDL_Window *window)
          }
 
          auto frame_end = chrono::milliseconds(0);
-         while (frame_end < chrono::milliseconds(16)) {
+         while (frame_end < time_per_frame) {
             frame_end = chrono::duration_cast<chrono::milliseconds>(
                 chrono::high_resolution_clock::now() - frame_start);
          }
@@ -307,12 +310,19 @@ std::string_view view_option_to_string(MemoryViewOption view_option) {
 
 void GuiContext::show_memory_view(MemoryViewType type, int default_height) {
    std::string_view label;
+   std::span<std::uint16_t> hack_mem { };
+   std::uint16_t mem_addr = 0;
+
    switch (type) {
    case MemoryViewType::RAM:
       label = "RAM";
+      mem_addr = _hack.address_reg;
+      hack_mem = _hack.data_mem;
       break;
    case MemoryViewType::ROM:
       label = "ROM";
+      hack_mem = _hack.instruction_mem;
+      mem_addr = _hack.pc;
       break;
    case MemoryViewType::Count:
       break;
@@ -376,22 +386,6 @@ void GuiContext::show_memory_view(MemoryViewType type, int default_height) {
          ImGui::TableSetupColumn("##address", ImGuiTableColumnFlags_WidthFixed, 50);
          ImGui::TableSetupColumn("##memory-contents", ImGuiTableColumnFlags_WidthStretch);
 
-         std::span<std::uint16_t> hack_mem { };
-         std::uint16_t mem_addr = 0;
-
-         switch (type) {
-         case MemoryViewType::RAM:
-            mem_addr = _hack.address_reg;
-            hack_mem = _hack.data_mem;
-            break;
-         case MemoryViewType::ROM:
-            hack_mem = _hack.instruction_mem;
-            mem_addr = _hack.pc;
-            break;
-         case MemoryViewType::Count:
-            break;
-         }
-
          // necessary otherwise the performance would crawl with 32K items to render
          ImGuiListClipper clipper;
          clipper.Begin(hack_mem.size());
@@ -435,12 +429,31 @@ void GuiContext::show_memory_view(MemoryViewType type, int default_height) {
             }
          }
 
-         if (_hack_state == HackState::StepThrough || _hack_state == HackState::Running) {
-            set_memory_view_scroll(mem_addr);
-         }
+         /* Update scroll if pc or address_reg change */ {
+            static auto prev_pc = -1;
+            static auto prev_addr = -1;
+            switch (type) {
+            case MemoryViewType::ROM:
+               if (prev_pc != _hack.pc) {
+                  set_memory_view_scroll(mem_addr);
+                  prev_pc = _hack.pc;
+               }
+               break;
+            case MemoryViewType::RAM:
+               if (prev_addr != _hack.address_reg) {
+                  set_memory_view_scroll(mem_addr);
+                  prev_addr = _hack.address_reg;
+               }
+               break;
+            case MemoryViewType::Count:
+               break;
+            }
 
-         if (_hack_state == HackState::Reset) {
-            set_memory_view_scroll(0);
+            if (_hack_state == HackState::Reset) {
+               set_memory_view_scroll(0);
+               prev_pc = -1;
+               prev_addr = -1;
+            }
          }
 
          ImGui::EndTable();
@@ -593,7 +606,8 @@ void GuiContext::show_hack_screen() {
 
 void GuiContext::show_hack_registers() {
    // TODO: improve layout
-   ImGui::BeginChild("##hack-registers", ImVec2(0, ImGui::GetTextLineHeightWithSpacing() + 20), ImGuiChildFlags_Borders);
+   ImGui::BeginChild("##hack-registers", ImVec2(0, ImGui::GetTextLineHeightWithSpacing() + 20),
+       ImGuiChildFlags_Borders);
    if (ImGui::BeginTable("hack-registers", 3, 0, ImVec2(300, 0))) {
       ImGui::TableNextRow();
       ImGui::TableNextColumn();
