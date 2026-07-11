@@ -41,7 +41,7 @@ GuiContext::GuiContext(SDL_Window *window)
    _hack_worker = std::jthread([this](std::stop_token token) {
       constexpr int frames_per_second = 60;
       constexpr int ticks_per_frame = 1400000 / frames_per_second;
-      constexpr auto time_per_frame = chrono::seconds(1 / frames_per_second);
+      constexpr auto time_per_frame = chrono::milliseconds(1000 / frames_per_second);
 
       while (!token.stop_requested()) {
          auto frame_start = chrono::high_resolution_clock::now();
