@@ -403,7 +403,9 @@ void GuiContext::show_memory_view(MemoryViewType type, int default_height) {
                case MemoryViewOption::Asm: {
                   auto inst_opt = assembly::disassemble(hack_mem[i]);
                   auto inst = inst_opt.has_value() ? inst_opt.value() : "(invalid asm)";
-                  ImGui::InputText("##mem_asm", inst.data(), inst.size());
+                  // TODO: make it editable once edited, we automatically assemble it and inject it
+                  // to memory
+                  ImGui::Text("%s", inst.c_str());
                   break;
                }
                case MemoryViewOption::Bin:
@@ -605,9 +607,9 @@ void GuiContext::show_hack_screen() {
 }
 
 void GuiContext::show_hack_registers() {
-   // TODO: improve layout
    ImGui::BeginChild("##hack-registers", ImVec2(0, ImGui::GetTextLineHeightWithSpacing() + 20),
        ImGuiChildFlags_Borders);
+
    if (ImGui::BeginTable("hack-registers", 3, 0, ImVec2(300, 0))) {
       ImGui::TableNextRow();
       ImGui::TableNextColumn();
