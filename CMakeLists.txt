@@ -5,8 +5,10 @@ project(n2t_suite
   LANGUAGES CXX
 )
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 if(MSVC)
   add_compile_options(/W4)
@@ -26,20 +28,27 @@ if(CMAKE_BUILD_TYPE STREQUAL Debug)
   add_compile_options()
 endif()
 
+add_subdirectory(vendor/imgui)
 add_subdirectory(src/hdl)
 add_subdirectory(src/report)
 add_subdirectory(src/asm)
 add_subdirectory(src/hack)
-add_subdirectory(vendor/imgui)
+add_subdirectory(src/gui)
 
 add_executable(n2t
   src/main.cpp
-  src/gui_widgets.cpp
 )
 
 find_package(SDL3 REQUIRED CONFIG REQUIRED COMPONENTS SDL3)
 find_package(OpenGL REQUIRED)
 
 target_link_libraries(n2t PRIVATE SDL3::SDL3 OpenGL::GL)
-target_link_libraries(n2t PUBLIC ImGUI n2t_hdl n2t_report n2t_asm n2t_hack)
+target_link_libraries(n2t PUBLIC
+  ImGUI
+  n2t_hdl
+  n2t_report
+  n2t_asm
+  n2t_hack
+  n2t_gui
+)
 

@@ -1,5 +1,5 @@
 #include "asm/asm.hpp"
-#include "gui_widgets.hpp"
+#include "gui/gui.hpp"
 #include "hack/hack.hpp"
 // #include "hdl/lexer.hpp"
 // #include "hdl/parser.hpp"
@@ -290,9 +290,9 @@ int gui_cmd() {
 
    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
-   gui::GuiContext w { window };
+   gui::Context gui { window };
 
-   auto update_theme = [&w] {
+   auto update_theme = [&gui] {
       auto system_theme = SDL_GetSystemTheme();
       if (system_theme == SDL_SYSTEM_THEME_DARK || system_theme == SDL_SYSTEM_THEME_UNKNOWN) {
          ImGui::StyleColorsDark();
@@ -300,7 +300,7 @@ int gui_cmd() {
          ImGui::StyleColorsLight();
       }
       // TODO: add light and dark theme variants
-      w.set_styling();
+      gui.set_styling();
    };
 
    update_theme();
@@ -314,11 +314,11 @@ int gui_cmd() {
             goto cleanup;
 
          case SDL_EVENT_KEY_DOWN:
-            w.set_keyboard_input(e.key.key);
+            gui.key = e.key.key;
             break;
 
          case SDL_EVENT_KEY_UP:
-            w.set_keyboard_input(std::nullopt);
+            gui.key = std::nullopt;
             break;
 
          case SDL_EVENT_SYSTEM_THEME_CHANGED:
@@ -344,116 +344,7 @@ int gui_cmd() {
           | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoSavedSettings
           | ImGuiWindowFlags_NoScrollWithMouse;
       if (ImGui::Begin("N2T Suite", nullptr, winflags)) {
-
-         w.show_menu_bar();
-
-         if (ImGui::BeginTabBar("N2T Tools", ImGuiTabBarFlags_DrawSelectedOverline)) {
-            if (ImGui::BeginTabItem("Hardware Simulator")) {
-               ImGui::TextUnformatted("TODO");
-               ImGui::EndTabItem();
-            }
-
-            if (ImGui::BeginTabItem("CPU Simulator")) {
-               // TODO: do refactor so that the main gui loop doesn't have to care about
-               // layouting besides just defining the tabs
-               w.show_top_bar();
-
-               if (ImGui::BeginTable("memory-view", 2)) {
-                  ImGui::TableSetupColumn("Memory View", ImGuiTableColumnFlags_WidthStretch, 0.3f);
-                  ImGui::TableSetupColumn("Screen", ImGuiTableColumnFlags_WidthStretch, 0.7f);
-
-                  ImGui::TableNextColumn();
-                  ImGui::SeparatorText("Registers");
-                  w.show_hack_registers();
-                  ImGui::SeparatorText("ROM");
-                  auto region_avail = ImGui::GetContentRegionAvail();
-                  w.show_memory_view(gui::MemoryViewType::ROM, region_avail.y / 2);
-                  ImGui::SeparatorText("RAM");
-                  region_avail = ImGui::GetContentRegionAvail();
-                  w.show_memory_view(gui::MemoryViewType::RAM, region_avail.y);
-
-                  ImGui::TableNextColumn();
-                  ImGui::SeparatorText("Screen");
-                  w.show_hack_screen();
-                  region_avail = ImGui::GetContentRegionAvail();
-                  ImGui::SeparatorText("Logs");
-                  w.show_logs(region_avail.y - ImGui::GetItemRectSize().y
-                      - ImGui::GetStyle().ItemSpacing.y);
-
-                  ImGui::EndTable();
-               }
-
-               ImGui::EndTabItem();
-            }
-
-            if (ImGui::BeginTabItem("VM Simulator")) {
-               ImGui::TextUnformatted("TODO");
-               ImGui::EndTabItem();
-            }
-
-            if (ImGui::BeginTabItem("Compilers")) {
-               ImGui::TextUnformatted("TODO");
-               ImGui::EndTabItem();
-            }
-
-            if (ImGui::BeginTabItem("Bitmap Editor")) {
-               constexpr std::uint16_t default_height = 16, default_width = 16;
-               static std::uint16_t pixel_height = default_height, pixel_width = default_width;
-
-               /* Bitmap controls */ {
-                  ImGui::BeginGroup();
-
-                  ImGui::SetNextItemWidth(100);
-                  ImGui::InputScalarN("##pixel-height", ImGuiDataType_U16, &pixel_height, 1);
-                  ImGui::SameLine();
-                  ImGui::TextUnformatted("x");
-
-                  ImGui::SameLine();
-                  ImGui::SetNextItemWidth(100);
-                  ImGui::InputScalarN("##pixel-width", ImGuiDataType_U16, &pixel_width, 1);
-
-                  ImGui::SameLine();
-                  if (ImGui::Button("Reset")) {
-                     pixel_width = default_width;
-                     pixel_height = default_height;
-                  }
-
-                  ImGui::EndGroup();
-               }
-
-               if (pixel_height > 0 && pixel_width > 0) {
-                  ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(0, 0));
-                  ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
-                  ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(0, 0));
-                  if (ImGui::BeginTable("Bitmap", pixel_width,
-                          ImGuiTableFlags_SizingFixedSame | ImGuiTableFlags_NoHostExtendX
-                              | ImGuiTableFlags_Borders)) {
-                     size_t item_id = 0;
-                     for (int row = 0; row < pixel_height; row++) {
-                        ImGui::TableNextRow();
-                        for (int col = 0; col < pixel_width; col++) {
-                           ImGui::TableNextColumn();
-                           ImGui::PushID(item_id++);
-                           if (ImGui::Button("##bitmap-pixel", ImVec2(15, 15))) {
-                              // TODO: draw pixel
-                           }
-                           ImGui::PopID();
-                        }
-                     }
-                     ImGui::EndTable();
-                  }
-                  ImGui::PopStyleVar(3);
-               }
-               ImGui::EndTabItem();
-            }
-
-            if (ImGui::BeginTabItem("Converter")) {
-               ImGui::TextUnformatted("TODO");
-               ImGui::EndTabItem();
-            }
-
-            ImGui::EndTabBar();
-         }
+         gui.show();
          ImGui::End();
       }
 
