@@ -35,6 +35,11 @@ void ViewCtx::show() {
          pixel_height = default_height;
       }
 
+      ImGui::SameLine();
+      if (ImGui::Button("Clear")) {
+         std::fill(pixels.begin(), pixels.end(), false);
+      }
+
       ImGui::EndGroup();
    }
 
