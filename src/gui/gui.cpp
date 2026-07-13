@@ -42,7 +42,8 @@ void Context::set_styling() {
 }
 
 void Context::dialog_request_file() {
-   SDL_DialogFileCallback callback = [](void *userdata, const char *const *filelist, int _) {
+   SDL_DialogFileCallback callback = [](void *userdata, const char *const *filelist, int filter) {
+      (void)filter;
       auto gc = static_cast<Context *>(userdata);
 
       if (filelist && *filelist) {

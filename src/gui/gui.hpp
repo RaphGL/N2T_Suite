@@ -34,6 +34,7 @@ class BaseView {
    public:
       virtual void show() = 0;
       virtual std::string_view view_name() const = 0;
+      virtual ~BaseView() = default;
 };
 
 class Context final {
