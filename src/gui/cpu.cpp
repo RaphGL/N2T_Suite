@@ -2,8 +2,10 @@
 #include "../asm/asm.hpp"
 #include "gui.hpp"
 #include "imgui.h"
+#include <charconv>
 #include <chrono>
 #include <cmath>
+#include <iostream>
 #include <thread>
 
 namespace chrono = std::chrono;
@@ -296,8 +298,7 @@ void ViewCtx::show_memory_view(MemoryViewType type, int default_height) {
               view_option_to_string(curr_view_opt[static_cast<int>(type)]).data())) {
          std::size_t start_idx = type == MemoryViewType::RAM ? 1 : 0;
          for (std::size_t i = start_idx; i < view_options.size(); i++) {
-            bool is_selected
-                = curr_view_opt.at(static_cast<int>(type)) == static_cast<MemoryViewOption>(i);
+            bool is_selected = curr_view_opt.at(static_cast<int>(type)) == view_options.at(i);
 
             auto curr_view_opt_str = view_option_to_string(view_options[i]);
             if (ImGui::Selectable(curr_view_opt_str.data(), is_selected)) {
@@ -316,22 +317,61 @@ void ViewCtx::show_memory_view(MemoryViewType type, int default_height) {
    }
 
    auto render_memory = [hack_mem, type](std::uint16_t idx) {
+      char input_buf[32 * 1024] = { };
+
       switch (curr_view_opt[static_cast<int>(type)]) {
       case MemoryViewOption::Asm: {
          auto inst_opt = assembly::disassemble(hack_mem[idx]);
-         auto inst = inst_opt.has_value() ? inst_opt.value() : "(invalid asm)";
+         auto inst_val = inst_opt.has_value() ? inst_opt.value() : "(invalid asm)";
          // TODO: make it editable once edited, we automatically assemble it and inject it
          // to memory
-         ImGui::Text("%s", inst.c_str());
-         break;
-      }
-      case MemoryViewOption::Bin:
-         break;
+         ImGui::InputText("%s", inst_val.data(), inst_val.size() + 1);
+      } break;
+
+      case MemoryViewOption::Bin: {
+         const auto bin_lit = std::format("0b{:b}", hack_mem[idx]);
+         std::copy(bin_lit.begin(), bin_lit.end(), input_buf);
+
+         if (ImGui::InputText("##mem_address", input_buf, sizeof(input_buf))) {
+            std::uint16_t num;
+            std::size_t num_start = 0, num_end = sizeof(input_buf);
+            std::string_view input_str { input_buf };
+            if (input_str.starts_with("0b")) {
+               num_start = 2;
+               num_end -= num_start;
+            }
+            auto chars_result
+                = std::from_chars(input_buf + num_start, input_buf + num_end, num, 16);
+            if (chars_result.ec == std::errc()) {
+               hack_mem[idx] = num;
+            }
+         }
+      } break;
+
       case MemoryViewOption::Dec:
-         ImGui::InputScalarN("##mem_address", ImGuiDataType_U16, &hack_mem[idx], 1);
+         ImGui::InputScalarN("##mem_address", ImGuiDataType_U16, &hack_mem[idx], 1, nullptr,
+             nullptr, nullptr, ImGuiInputTextFlags_CharsDecimal);
          break;
-      case MemoryViewOption::Hex:
-         break;
+
+      case MemoryViewOption::Hex: {
+         const auto hex_lit = std::format("0x{:x}", hack_mem[idx]);
+         std::copy(hex_lit.begin(), hex_lit.end(), input_buf);
+
+         if (ImGui::InputText("##mem_address", input_buf, sizeof(input_buf))) {
+            std::uint16_t num;
+            std::size_t num_start = 0, num_end = sizeof(input_buf);
+            std::string_view input_str { input_buf };
+            if (input_str.starts_with("0x")) {
+               num_start = 2;
+               num_end -= num_start;
+            }
+            auto chars_result
+                = std::from_chars(input_buf + num_start, input_buf + num_end, num, 16);
+            if (chars_result.ec == std::errc()) {
+               hack_mem[idx] = num;
+            }
+         }
+      } break;
       }
    };
 
