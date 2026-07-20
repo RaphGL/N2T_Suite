@@ -1,10 +1,6 @@
 <br />
 <p align="center">
   <!-- PROJECT LOGO -->
-  <a href="https://github.com/RaphGL/N2T_Suite">
-    <img src="logo.png" alt="Logo" height="80">
-  </a>
-
   <h3 align="center">Native Nand2Tetris suite</h3>
   <p align="center">
     <a href="https://github.com/RaphGL/ProjectName/issues">Report Bug</a>
@@ -12,6 +8,9 @@
     <a href="https://github.com/RaphGL/ProjectName/issues">Request Feature</a>
   </p>
 </p>
+
+<img src="SCREENSHOT.png" alt="N2T_Suite Screenshot" />
+
 
 <!-- TABLE OF CONTENTS -->
 <details open="open">
