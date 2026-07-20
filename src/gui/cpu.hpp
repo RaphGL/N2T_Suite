@@ -4,6 +4,7 @@
 #include "../hack/hack.hpp"
 #include "gui.hpp"
 #include "widget/log.hpp"
+#include "widget/memory_viewer.hpp"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_opengl.h>
 #include <thread>
@@ -22,7 +23,6 @@ enum class MemoryViewOption {
    Hex,
    Bin,
    Dec,
-
 };
 
 enum class State {
@@ -36,6 +36,8 @@ enum class State {
 class ViewCtx final : public gui::BaseView {
    gui::Context *_ctx;
    widget::Log _logs;
+   widget::MemoryViewer _rom_viewer;
+   widget::MemoryViewer _ram_viewer;
 
    Hack _hack { };
    GLuint _hack_screen_tex = -1;
@@ -46,11 +48,9 @@ class ViewCtx final : public gui::BaseView {
 
    void show_top_bar();
    void show_hack_screen();
+   void show_memory_view(MemoryViewType type, int default_height);
    void show_hack_registers();
    void clear_hack_memory(MemoryViewType type);
-
-   void set_memory_view_scroll(int row);
-   void show_memory_view(MemoryViewType type, int default_height);
 
    public:
    ViewCtx(gui::Context *ctx);

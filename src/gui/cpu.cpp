@@ -2,7 +2,6 @@
 #include "../asm/asm.hpp"
 #include "gui.hpp"
 #include "imgui.h"
-#include "imgui_internal.h"
 #include <chrono>
 #include <cmath>
 #include <thread>
@@ -13,9 +12,11 @@ namespace gui::cpu {
 
 ViewCtx::ViewCtx(gui::Context *ctx)
     : _ctx { ctx }
-    , _logs { ctx->monofont } {
+    , _logs { ctx->monofont }
+    , _rom_viewer(_hack.instruction_mem, _hack.pc)
+    , _ram_viewer(_hack.data_mem, _hack.address_reg) {
 
-   {
+   /* init hack screen texture */ {
       glGenTextures(1, &_hack_screen_tex);
       glBindTexture(GL_TEXTURE_2D, _hack_screen_tex);
 
@@ -242,41 +243,30 @@ std::string_view view_option_to_string(MemoryViewOption view_option) {
    return view_option_str;
 }
 
-void ViewCtx::set_memory_view_scroll(int row) {
-   auto curr_style = ImGui::GetStyle();
-   auto row_height = ImGui::GetTextLineHeightWithSpacing() + curr_style.CellPadding.y
-       + curr_style.ItemSpacing.y;
-   auto view_point = row;
-   if (view_point > 3) {
-      view_point -= 3;
-   }
-   ImGui::SetScrollY(row_height * view_point);
-}
-
 void ViewCtx::show_memory_view(MemoryViewType type, int default_height) {
+   ImGui::BeginGroup();
    std::string_view label;
    std::span<std::uint16_t> hack_mem { };
-   std::uint16_t mem_addr = 0;
 
    switch (type) {
    case MemoryViewType::RAM:
       label = "RAM";
-      mem_addr = _hack.address_reg;
       hack_mem = _hack.data_mem;
       break;
    case MemoryViewType::ROM:
       label = "ROM";
       hack_mem = _hack.instruction_mem;
-      mem_addr = _hack.pc;
       break;
    case MemoryViewType::Count:
       break;
    }
 
-   ImGui::BeginGroup();
-   {
-      ImGui::BeginGroup();
+   static std::array<MemoryViewOption, static_cast<int>(MemoryViewType::Count)> curr_view_opt
+       = { MemoryViewOption::Asm, MemoryViewOption::Dec };
+
+   /* Memory viewer controls */ {
       ImGui::PushID(label.data());
+
       if (type != MemoryViewType::RAM) {
          if (ImGui::Button("Load")) {
             if (!_ctx->dialog_ongoing()) {
@@ -292,9 +282,6 @@ void ViewCtx::show_memory_view(MemoryViewType type, int default_height) {
       if (ImGui::Button("Search")) {
          // TODO
       }
-
-      static std::array<MemoryViewOption, static_cast<int>(MemoryViewType::Count)> curr_view_opt
-          = { MemoryViewOption::Asm, MemoryViewOption::Dec };
 
       std::array<MemoryViewOption, 4> view_options {
          MemoryViewOption::Asm,
@@ -324,90 +311,66 @@ void ViewCtx::show_memory_view(MemoryViewType type, int default_height) {
 
          ImGui::EndCombo();
       }
+
       ImGui::PopID();
-      ImGui::EndGroup();
-      auto buttons_height = ImGui::GetItemRectSize().y + ImGui::GetStyle().ItemSpacing.y;
-
-      if (ImGui::BeginTable(label.data(), 2, ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersOuter,
-              ImVec2(0, default_height - buttons_height))) {
-         ImGui::TableSetupColumn("##address", ImGuiTableColumnFlags_WidthFixed, 50);
-         ImGui::TableSetupColumn("##memory-contents", ImGuiTableColumnFlags_WidthStretch);
-
-         // necessary otherwise the performance would crawl with 32K items to render
-         ImGuiListClipper clipper;
-         clipper.Begin(hack_mem.size());
-         while (clipper.Step()) {
-            for (auto i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
-               ImGui::PushID(i);
-               ImGui::TableNextRow();
-               ImGui::TableNextColumn();
-               ImGui::Text("%d", static_cast<int>(i));
-
-               ImGui::TableNextColumn();
-               ImGui::SetNextItemWidth(-FLT_MIN);
-
-               switch (curr_view_opt[static_cast<int>(type)]) {
-               case MemoryViewOption::Asm: {
-                  auto inst_opt = assembly::disassemble(hack_mem[i]);
-                  auto inst = inst_opt.has_value() ? inst_opt.value() : "(invalid asm)";
-                  // TODO: make it editable once edited, we automatically assemble it and inject it
-                  // to memory
-                  ImGui::Text("%s", inst.c_str());
-                  break;
-               }
-               case MemoryViewOption::Bin:
-                  break;
-               case MemoryViewOption::Dec:
-                  ImGui::InputScalarN("##mem_address", ImGuiDataType_U16, &hack_mem[i], 1);
-                  break;
-               case MemoryViewOption::Hex:
-                  break;
-               }
-
-               if (ImGui::TableGetHoveredRow() == i) {
-                  ImGui::TableSetBgColor(
-                      ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImGuiCol_HeaderHovered));
-               } else if (ImGui::IsItemActive()) {
-                  ImGui::TableSetBgColor(
-                      ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImGuiCol_HeaderActive));
-               } else if (mem_addr == i && _hack_state != State::Off) {
-                  ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(Color::RED));
-               }
-
-               ImGui::PopID();
-            }
-         }
-
-         /* Update scroll if pc or address_reg change */ {
-            static auto prev_pc = -1;
-            static auto prev_addr = -1;
-            switch (type) {
-            case MemoryViewType::ROM:
-               if (prev_pc != _hack.pc) {
-                  set_memory_view_scroll(mem_addr);
-                  prev_pc = _hack.pc;
-               }
-               break;
-            case MemoryViewType::RAM:
-               if (prev_addr != _hack.address_reg) {
-                  set_memory_view_scroll(mem_addr);
-                  prev_addr = _hack.address_reg;
-               }
-               break;
-            case MemoryViewType::Count:
-               break;
-            }
-
-            if (_hack_state == State::Reset) {
-               set_memory_view_scroll(0);
-               prev_pc = -1;
-               prev_addr = -1;
-            }
-         }
-
-         ImGui::EndTable();
-      }
    }
+
+   auto render_memory = [hack_mem, type](std::uint16_t idx) {
+      switch (curr_view_opt[static_cast<int>(type)]) {
+      case MemoryViewOption::Asm: {
+         auto inst_opt = assembly::disassemble(hack_mem[idx]);
+         auto inst = inst_opt.has_value() ? inst_opt.value() : "(invalid asm)";
+         // TODO: make it editable once edited, we automatically assemble it and inject it
+         // to memory
+         ImGui::Text("%s", inst.c_str());
+         break;
+      }
+      case MemoryViewOption::Bin:
+         break;
+      case MemoryViewOption::Dec:
+         ImGui::InputScalarN("##mem_address", ImGuiDataType_U16, &hack_mem[idx], 1);
+         break;
+      case MemoryViewOption::Hex:
+         break;
+      }
+   };
+
+   static auto prev_pc = -1;
+   static auto prev_addr = -1;
+   switch (type) {
+   case MemoryViewType::ROM:
+      if (_hack_state != State::Running && prev_pc != _hack.pc) {
+         _rom_viewer.set_scroll(_hack.pc);
+         prev_pc = _hack.pc;
+      }
+      _rom_viewer.show("##rom-viewer", default_height, render_memory);
+      break;
+   case MemoryViewType::RAM:
+      if (_hack_state != State::Running && prev_addr != _hack.address_reg) {
+         _ram_viewer.set_scroll(_hack.address_reg);
+         prev_addr = _hack.address_reg;
+      }
+      _ram_viewer.show("##ram-viewer", default_height, render_memory);
+      break;
+   case MemoryViewType::Count:
+      break;
+   }
+
+   if (_hack_state == State::Reset) {
+      _rom_viewer.set_scroll(0);
+      _ram_viewer.set_scroll(0);
+      prev_pc = -1;
+      prev_addr = -1;
+   }
+
+   if (_hack_state != State::Off && _hack_state != State::Running) {
+      _rom_viewer.show_active_address = true;
+      _ram_viewer.show_active_address = true;
+   } else {
+      _rom_viewer.show_active_address = false;
+      _ram_viewer.show_active_address = false;
+   }
+
    ImGui::EndGroup();
 }
 
@@ -439,38 +402,34 @@ void ViewCtx::show_hack_registers() {
 
 void ViewCtx::show_top_bar() {
    ImGui::BeginGroup();
-   if (ImGui::BeginChild("top-bar", ImVec2(0, 40))) {
-      if (ImGui::Button("Load Program")) {
-         if (!_ctx->dialog_ongoing()) {
-            _ctx->dialog_request_file();
-         }
-      }
-      ImGui::SameLine();
-      if (ImGui::Button("Single Step")) {
-         _hack_state = State::StepThrough;
-      }
-      ImGui::SameLine();
-      if (ImGui::Button(_hack_state != State::Running ? "Run" : "Stop")) {
-         _hack_state = _hack_state == State::Running ? State::Stopped : State::Running;
-      }
-      ImGui::SameLine();
-      if (ImGui::Button("Reset")) {
-         _hack_state = State::Reset;
-      }
-      ImGui::SameLine();
-      ImGui::Button("Load Script");
-
-      ImGui::SameLine();
-      ImGui::TextUnformatted("CPU Speed:");
-      ImGui::SameLine();
-      ImGui::SetNextItemWidth(100);
-      if (ImGui::SliderFloat("##program-speed", &_hack_speed, 0.5f, 2.0f, "%.1f")) {
-         constexpr float step = 0.1f;
-         _hack_speed = std::round(_hack_speed / step) * step;
+   if (ImGui::Button("Load Program")) {
+      if (!_ctx->dialog_ongoing()) {
+         _ctx->dialog_request_file();
       }
    }
-   ImGui::EndChild();
+   ImGui::SameLine();
+   if (ImGui::Button("Single Step")) {
+      _hack_state = State::StepThrough;
+   }
+   ImGui::SameLine();
+   if (ImGui::Button(_hack_state != State::Running ? "Run" : "Stop")) {
+      _hack_state = _hack_state == State::Running ? State::Stopped : State::Running;
+   }
+   ImGui::SameLine();
+   if (ImGui::Button("Reset")) {
+      _hack_state = State::Reset;
+   }
+   ImGui::SameLine();
+   ImGui::Button("Load Script");
+
+   ImGui::SameLine();
+   ImGui::TextUnformatted("CPU Speed:");
+   ImGui::SameLine();
+   ImGui::SetNextItemWidth(100);
+   if (ImGui::SliderFloat("##program-speed", &_hack_speed, 0.5f, 2.0f, "%.1f")) {
+      constexpr float step = 0.1f;
+      _hack_speed = std::round(_hack_speed / step) * step;
+   }
    ImGui::EndGroup();
 }
-
 };
