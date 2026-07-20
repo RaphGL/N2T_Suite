@@ -314,7 +314,7 @@ int gui_cmd() {
             goto cleanup;
 
          case SDL_EVENT_KEY_DOWN:
-            gui.key = e.key.key;
+            gui.key.store(e.key.key, std::memory_order_release);
             break;
 
          case SDL_EVENT_KEY_UP:

@@ -2,6 +2,7 @@
 #include "../asm/asm.hpp"
 #include "gui.hpp"
 #include "imgui.h"
+#include <atomic>
 #include <charconv>
 #include <chrono>
 #include <cmath>
@@ -38,7 +39,7 @@ ViewCtx::ViewCtx(gui::Context *ctx)
       while (!token.stop_requested()) {
          auto frame_start = chrono::high_resolution_clock::now();
          try {
-            switch (_hack_state) {
+            switch (_hack_state.load(std::memory_order_relaxed)) {
             case State::Off:
                [[fallthrough]];
             case State::Stopped:
@@ -46,7 +47,7 @@ ViewCtx::ViewCtx(gui::Context *ctx)
                break;
 
             case State::Running: {
-               auto key = _ctx->key.load(std::memory_order_seq_cst);
+               auto key = _ctx->key.load(std::memory_order_acquire);
                auto &keyboard_mem = _hack.get_keyboard_mmap();
                if (key.has_value()) {
                   keyboard_mem = convert_input_to_hack(key.value());
@@ -61,17 +62,17 @@ ViewCtx::ViewCtx(gui::Context *ctx)
 
             case State::StepThrough:
                _hack.tick();
-               _hack_state = State::Stopped;
+               _hack_state.store(State::Stopped, std::memory_order_relaxed);
                std::this_thread::sleep_for(time_per_frame);
                break;
 
             case State::Reset:
                _hack.pc = 0;
-               _hack_state = State::Stopped;
+               _hack_state.store(State::Stopped, std::memory_order_relaxed);
                break;
             }
-         } catch (std::out_of_range) {
-            _hack_state = State::Stopped;
+         } catch (std::out_of_range&) {
+            _hack_state.store(State::Stopped, std::memory_order_relaxed);
             _logs.push(LogType::Error, "Failed to run. Check if you have a valid program loaded.");
          }
 

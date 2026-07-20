@@ -93,13 +93,17 @@ void ViewCtx::show() {
       ImGui::BeginGroup();
 
       ImGui::SetNextItemWidth(100);
-      ImGui::InputScalarN("##pixel-height", ImGuiDataType_U16, &_pixels_height, 1);
+      bool height_changed = ImGui::InputScalarN("##pixel-height", ImGuiDataType_U16, &_pixels_height, 1);
       ImGui::SameLine();
       ImGui::TextUnformatted("x");
 
       ImGui::SameLine();
       ImGui::SetNextItemWidth(100);
-      ImGui::InputScalarN("##pixel-width", ImGuiDataType_U16, &_pixels_width, 1);
+      bool width_changed = ImGui::InputScalarN("##pixel-width", ImGuiDataType_U16, &_pixels_width, 1);
+
+      if (height_changed || width_changed) {
+         // TODO: shift pixels to match new dimensions
+      }
 
       ImGui::SameLine();
       if (ImGui::Button("Reset")) {
