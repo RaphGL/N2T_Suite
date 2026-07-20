@@ -71,7 +71,7 @@ ViewCtx::ViewCtx(gui::Context *ctx)
                _hack_state.store(State::Stopped, std::memory_order_relaxed);
                break;
             }
-         } catch (std::out_of_range&) {
+         } catch (std::out_of_range &) {
             _hack_state.store(State::Stopped, std::memory_order_relaxed);
             _logs.push(LogType::Error, "Failed to run. Check if you have a valid program loaded.");
          }
@@ -279,8 +279,30 @@ void ViewCtx::show_memory_view(MemoryViewType type, int default_height) {
          ImGui::SameLine();
       }
       if (ImGui::Button("Clear")) {
-         clear_hack_memory(type);
+         ImGui::OpenPopup("clear-confirmation");
       }
+      if (ImGui::BeginPopup("clear-confirmation")) {
+         switch (type) {
+         case MemoryViewType::RAM:
+            ImGui::Text("Are you sure you want to clear RAM?");
+            break;
+         case MemoryViewType::ROM:
+            ImGui::Text("Are you sure you want to clear ROM?");
+            break;
+         case MemoryViewType::Count:
+            break;
+         }
+         if (ImGui::Button("Clear")) {
+            clear_hack_memory(type);
+            ImGui::CloseCurrentPopup();
+         }
+         ImGui::SameLine();
+         if (ImGui::Button("Cancel")) {
+            ImGui::CloseCurrentPopup();
+         }
+         ImGui::EndPopup();
+      }
+
       ImGui::SameLine();
       if (ImGui::Button("Search")) {
          // TODO
