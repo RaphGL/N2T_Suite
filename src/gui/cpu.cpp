@@ -2,6 +2,7 @@
 #include "../asm/asm.hpp"
 #include "gui.hpp"
 #include "imgui.h"
+#include <algorithm>
 #include <atomic>
 #include <charconv>
 #include <chrono>
@@ -228,24 +229,38 @@ void ViewCtx::clear_hack_memory(MemoryViewType type) {
 }
 
 std::string_view view_option_to_string(MemoryViewOption view_option) {
-   std::string_view view_option_str;
    switch (view_option) {
    case MemoryViewOption::Asm:
-      view_option_str = "Assembly";
-      break;
+      return "Assembly";
    case MemoryViewOption::Bin:
-      view_option_str = "Binary";
-      break;
+      return "Binary";
    case MemoryViewOption::Dec:
-      view_option_str = "Decimal";
-      break;
+      return "Decimal";
    case MemoryViewOption::Hex:
-      view_option_str = "Hexadecimal";
-      break;
+      return "Hexadecimal";
    }
-   return view_option_str;
 }
 
+std::string_view search_type_to_string(SearchType type) {
+   switch (type) {
+   case SearchType::Asm:
+      return "Assembly";
+   case SearchType::Bin:
+      return "Binary";
+   case SearchType::Dec:
+      return "Decimal";
+   case SearchType::Hex:
+      return "Hexadecimal";
+   case SearchType::MemAddr:
+      return "Memory Address";
+   case SearchType::Count:
+      return "Count";
+   }
+}
+
+// TODO: refactor to have the memory view have toggleable buttons for search, load file, etc
+// in the gui/widgets/memory_viewer.cpp
+// This will allow the widget to better be reused for the future vm simulator tab
 void ViewCtx::show_memory_view(MemoryViewType type, int default_height) {
    ImGui::BeginGroup();
    std::string_view label;
@@ -278,6 +293,7 @@ void ViewCtx::show_memory_view(MemoryViewType type, int default_height) {
          }
          ImGui::SameLine();
       }
+
       if (ImGui::Button("Clear")) {
          ImGui::OpenPopup("clear-confirmation");
       }
@@ -305,7 +321,41 @@ void ViewCtx::show_memory_view(MemoryViewType type, int default_height) {
 
       ImGui::SameLine();
       if (ImGui::Button("Search")) {
-         // TODO
+         ImGui::OpenPopup("search-memory");
+      }
+      if (ImGui::BeginPopup("search-memory")) {
+         ImGui::TextUnformatted("Type:");
+         ImGui::SameLine();
+
+         std::array<SearchType, static_cast<std::size_t>(SearchType::Count)> search_types
+             = { SearchType::Asm, SearchType::Bin, SearchType::Dec, SearchType::Hex,
+                  SearchType::MemAddr };
+
+         static SearchType curr_type = SearchType::MemAddr;
+
+         if (ImGui::BeginCombo("##search-type", search_type_to_string(curr_type).data())) {
+            for (const auto type : search_types) {
+               bool is_selected = type == curr_type;
+               if (ImGui::Selectable(search_type_to_string(type).data(), is_selected)) {
+                  curr_type = type;
+               }
+            }
+            ImGui::EndCombo();
+         }
+         char search_buf[64] = { };
+         ImGui::SetNextItemWidth(0);
+         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+         ImGui::InputTextWithHint(
+             "##search-memory", "Search Query", search_buf, sizeof(search_buf));
+
+         if (ImGui::Button("Search")) {
+            // TODO need to refactor before continuing otherwise this will get messy
+         }
+         ImGui::SameLine();
+         if (ImGui::Button("Close")) {
+            ImGui::CloseCurrentPopup();
+         }
+         ImGui::EndPopup();
       }
 
       std::array<MemoryViewOption, 4> view_options {
@@ -438,25 +488,29 @@ void ViewCtx::show_memory_view(MemoryViewType type, int default_height) {
 }
 
 void ViewCtx::show_hack_registers() {
-   ImGui::BeginChild("##hack-registers", ImVec2(0, ImGui::GetTextLineHeightWithSpacing() + 20),
+   ImGui::BeginChild("##hack-registers", ImVec2(0, ImGui::GetTextLineHeightWithSpacing() + 25),
        ImGuiChildFlags_Borders);
 
    if (ImGui::BeginTable("hack-registers", 3, 0, ImVec2(300, 0))) {
       ImGui::TableNextRow();
       ImGui::TableNextColumn();
+      ImGui::AlignTextToFramePadding();
       ImGui::TextUnformatted("A:");
       ImGui::SameLine();
-      ImGui::Text("%d", _hack.address_reg);
+      ImGui::InputScalar("##A", ImGuiDataType_U16, &_hack.address_reg, nullptr, nullptr, nullptr,
+          ImGuiInputTextFlags_EnterReturnsTrue);
 
       ImGui::TableNextColumn();
       ImGui::TextUnformatted("D:");
       ImGui::SameLine();
-      ImGui::Text("%d", _hack.data_reg);
+      ImGui::InputScalar("##D", ImGuiDataType_U16, &_hack.data_reg, nullptr, nullptr, nullptr,
+          ImGuiInputTextFlags_EnterReturnsTrue);
 
       ImGui::TableNextColumn();
       ImGui::TextUnformatted("PC:");
       ImGui::SameLine();
-      ImGui::Text("%d", _hack.pc);
+      ImGui::InputScalar("##PC", ImGuiDataType_U16, &_hack.pc, nullptr, nullptr, nullptr,
+          ImGuiInputTextFlags_EnterReturnsTrue);
 
       ImGui::EndTable();
    }

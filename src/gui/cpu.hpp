@@ -25,6 +25,16 @@ enum class MemoryViewOption {
    Dec,
 };
 
+enum class SearchType {
+   MemAddr,
+   Asm,
+   Bin,
+   Dec,
+   Hex,
+
+   Count,
+};
+
 enum class State {
    Off,
    Running,

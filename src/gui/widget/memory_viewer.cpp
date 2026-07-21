@@ -34,6 +34,7 @@ void MemoryViewer::show(std::string_view label, int default_height,
             ImGui::PushID(i);
             ImGui::TableNextRow(ImGuiTableRowFlags_None, MIN_ROW_HEIGHT);
             ImGui::TableNextColumn();
+            ImGui::AlignTextToFramePadding();
             ImGui::Text("%d", static_cast<int>(i));
 
             ImGui::TableNextColumn();
