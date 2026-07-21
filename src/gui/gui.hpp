@@ -4,6 +4,7 @@
 #include "imgui.h"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_opengl.h>
+#include <chrono>
 #include <filesystem>
 #include <memory>
 #include <mutex>
@@ -12,8 +13,17 @@
 #include <vector>
 
 namespace fs = std::filesystem;
+namespace chrono = std::chrono;
 
 namespace gui {
+
+constexpr int FRAME_PER_SECOND = 60;
+constexpr auto TIME_PER_FRAME = chrono::milliseconds(1000 / FRAME_PER_SECOND);
+
+// begins tracking of frame time
+void start_frame();
+// sleeps thread until frame time is over
+void end_frame();
 
 consteval ImVec4 rgba_to_imvec4(uint32_t rgba) {
    float r = rgba >> 24 & 0xFF;
@@ -32,9 +42,9 @@ namespace Color {
 
 class BaseView {
    public:
-      virtual void show() = 0;
-      virtual std::string_view view_name() const = 0;
-      virtual ~BaseView() = default;
+   virtual void show() = 0;
+   virtual std::string_view view_name() const = 0;
+   virtual ~BaseView() = default;
 };
 
 class Context final {

@@ -33,12 +33,10 @@ ViewCtx::ViewCtx(gui::Context *ctx)
    }
 
    _hack_worker = std::jthread([this](std::stop_token token) {
-      constexpr int frames_per_second = 60;
-      constexpr int ticks_per_frame = 1400000 / frames_per_second;
-      constexpr auto time_per_frame = chrono::milliseconds(1000 / frames_per_second);
+      constexpr int ticks_per_frame = 1400000 / gui::FRAME_PER_SECOND;
 
       while (!token.stop_requested()) {
-         auto frame_start = chrono::high_resolution_clock::now();
+         gui::start_frame();
          try {
             switch (_hack_state.load(std::memory_order_relaxed)) {
             case State::Off:
@@ -64,7 +62,7 @@ ViewCtx::ViewCtx(gui::Context *ctx)
             case State::StepThrough:
                _hack.tick();
                _hack_state.store(State::Stopped, std::memory_order_relaxed);
-               std::this_thread::sleep_for(time_per_frame);
+               std::this_thread::sleep_for(gui::TIME_PER_FRAME);
                break;
 
             case State::Reset:
@@ -77,12 +75,7 @@ ViewCtx::ViewCtx(gui::Context *ctx)
             _logs.push(LogType::Error, "Failed to run. Check if you have a valid program loaded.");
          }
 
-         auto frame_end = chrono::duration_cast<chrono::milliseconds>(
-             chrono::high_resolution_clock::now() - frame_start);
-         auto missing_time = time_per_frame - frame_end;
-         if (missing_time > chrono::milliseconds(0)) {
-            std::this_thread::sleep_for(missing_time);
-         }
+         gui::end_frame();
       }
    });
 

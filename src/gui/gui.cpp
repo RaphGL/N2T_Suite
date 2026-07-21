@@ -3,12 +3,27 @@
 #include "bitmap.hpp"
 #include "cpu.hpp"
 #include "imgui.h"
+#include <chrono>
 #include <filesystem>
 #include <optional>
 
 namespace fs = std::filesystem;
+namespace chrono = std::chrono;
 
 namespace gui {
+
+static thread_local chrono::high_resolution_clock::time_point frame_start;
+
+void start_frame() { frame_start = chrono::high_resolution_clock::now(); }
+
+void end_frame() {
+   auto frame_end = chrono::duration_cast<chrono::milliseconds>(
+       chrono::high_resolution_clock::now() - frame_start);
+   auto missing_time = TIME_PER_FRAME - frame_end;
+   if (missing_time > chrono::milliseconds(0)) {
+      std::this_thread::sleep_for(missing_time);
+   }
+}
 
 Context::Context(SDL_Window *window)
     : _window { window } {

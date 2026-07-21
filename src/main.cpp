@@ -307,7 +307,7 @@ int gui_cmd() {
    update_theme();
 
    for (;;) {
-      auto frame_start = chrono::high_resolution_clock::now();
+      gui::start_frame();
       SDL_Event e;
       while (SDL_PollEvent(&e)) {
          ImGui_ImplSDL3_ProcessEvent(&e);
@@ -358,14 +358,7 @@ int gui_cmd() {
       glClear(GL_COLOR_BUFFER_BIT);
       ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
       SDL_GL_SwapWindow(window);
-
-      auto frame_end = chrono::duration_cast<chrono::milliseconds>(
-          chrono::high_resolution_clock::now() - frame_start);
-      constexpr auto time_per_frame = chrono::milliseconds(1000 / 60);
-      auto missing_time = time_per_frame - frame_end;
-      if (missing_time > chrono::milliseconds(0)) {
-         std::this_thread::sleep_for(missing_time);
-      }
+      gui::end_frame();
    }
 
 cleanup:
