@@ -77,10 +77,11 @@ ViewCtx::ViewCtx(gui::Context *ctx)
             _logs.push(LogType::Error, "Failed to run. Check if you have a valid program loaded.");
          }
 
-         auto frame_end = chrono::milliseconds(0);
-         while (frame_end < time_per_frame) {
-            frame_end = chrono::duration_cast<chrono::milliseconds>(
-                chrono::high_resolution_clock::now() - frame_start);
+         auto frame_end = chrono::duration_cast<chrono::milliseconds>(
+             chrono::high_resolution_clock::now() - frame_start);
+         auto missing_time = time_per_frame - frame_end;
+         if (missing_time > chrono::milliseconds(0)) {
+            std::this_thread::sleep_for(missing_time);
          }
       }
    });
@@ -212,7 +213,6 @@ void ViewCtx::show_hack_screen() {
 
    ImGui::PopStyleVar();
    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + padding_x);
-   ImGui::Dummy(ImVec2(0, 10));
 }
 
 void ViewCtx::clear_hack_memory(MemoryViewType type) {

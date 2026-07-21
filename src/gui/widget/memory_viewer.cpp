@@ -47,7 +47,7 @@ void MemoryViewer::show(std::string_view label, int default_height,
                _next_scroll = std::nullopt;
             }
 
-            if (ImGui::TableGetHoveredRow() == i) {
+            if (ImGui::IsItemHovered()) {
                ImGui::TableSetBgColor(
                    ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImGuiCol_HeaderHovered));
             } else if (ImGui::IsItemActive()) {

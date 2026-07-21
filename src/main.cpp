@@ -21,6 +21,7 @@
 #include <optional>
 #include <span>
 #include <sstream>
+#include <thread>
 
 namespace chrono = std::chrono;
 namespace fs = std::filesystem;
@@ -250,7 +251,7 @@ int gui_cmd() {
    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
 
    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
@@ -306,6 +307,7 @@ int gui_cmd() {
    update_theme();
 
    for (;;) {
+      auto frame_start = chrono::high_resolution_clock::now();
       SDL_Event e;
       while (SDL_PollEvent(&e)) {
          ImGui_ImplSDL3_ProcessEvent(&e);
@@ -356,6 +358,14 @@ int gui_cmd() {
       glClear(GL_COLOR_BUFFER_BIT);
       ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
       SDL_GL_SwapWindow(window);
+
+      auto frame_end = chrono::duration_cast<chrono::milliseconds>(
+          chrono::high_resolution_clock::now() - frame_start);
+      constexpr auto time_per_frame = chrono::milliseconds(1000 / 60);
+      auto missing_time = time_per_frame - frame_end;
+      if (missing_time > chrono::milliseconds(0)) {
+         std::this_thread::sleep_for(missing_time);
+      }
    }
 
 cleanup:
