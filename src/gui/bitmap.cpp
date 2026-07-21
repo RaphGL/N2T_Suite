@@ -3,6 +3,7 @@
 #include "imgui.h"
 #include <algorithm>
 #include <array>
+#include <cstddef>
 #include <cstdint>
 
 namespace gui::bitmap {
@@ -86,6 +87,26 @@ void ViewCtx::bitmap_shift(ShiftDirection dir) {
    }
 }
 
+void ViewCtx::bitmap_refit(std::uint16_t prev_width, std::uint16_t prev_height) {
+   if (prev_width == 0 && prev_height == 0
+       && (prev_width != _pixels_width && prev_height != _pixels_height)) {
+      return;
+   }
+
+   auto prev_pixels = _pixels;
+   _pixels.fill(false);
+
+   for (std::size_t x = 0; x < prev_width; x++) {
+      for (std::size_t y = 0; y < prev_height; y++) {
+         auto idx = y * prev_width + x;
+         auto curr_pixel = prev_pixels.at(idx);
+         if (x < _pixels_width && y < _pixels_height) {
+            bitmap_at(x, y) = curr_pixel;
+         }
+      }
+   }
+}
+
 void ViewCtx::show() {
    constexpr std::size_t button_size = 15;
 
@@ -93,22 +114,34 @@ void ViewCtx::show() {
       ImGui::BeginGroup();
 
       ImGui::SetNextItemWidth(100);
-      bool height_changed = ImGui::InputScalarN("##pixel-height", ImGuiDataType_U16, &_pixels_height, 1);
+      // used as temporaries
+      std::uint16_t curr_height = _pixels_height, curr_width = _pixels_width;
+
+      bool height_changed = ImGui::InputScalarN("##pixel-height", ImGuiDataType_U16, &curr_height,
+          1, nullptr, nullptr, nullptr, ImGuiInputTextFlags_EnterReturnsTrue);
       ImGui::SameLine();
       ImGui::TextUnformatted("x");
 
       ImGui::SameLine();
       ImGui::SetNextItemWidth(100);
-      bool width_changed = ImGui::InputScalarN("##pixel-width", ImGuiDataType_U16, &_pixels_width, 1);
+      bool width_changed = ImGui::InputScalarN("##pixel-width", ImGuiDataType_U16, &curr_width, 1,
+          nullptr, nullptr, nullptr, ImGuiInputTextFlags_EnterReturnsTrue);
 
       if (height_changed || width_changed) {
-         // TODO: shift pixels to match new dimensions
+         auto prev_width = _pixels_width;
+         auto prev_height = _pixels_height;
+         _pixels_height = curr_height;
+         _pixels_width = curr_width;
+         bitmap_refit(prev_width, prev_height);
       }
 
       ImGui::SameLine();
       if (ImGui::Button("Reset")) {
+         auto prev_width = _pixels_width;
+         auto prev_height = _pixels_height;
          _pixels_width = default_width;
          _pixels_height = default_height;
+         bitmap_refit(prev_width, prev_height);
       }
 
       ImGui::SameLine();

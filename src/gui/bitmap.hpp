@@ -6,7 +6,7 @@
 
 namespace gui::bitmap {
 
-constexpr std::uint16_t default_height = 16, default_width = 16;
+constexpr std::uint16_t default_height = 32, default_width = 32;
 constexpr std::uint16_t max_height = 256, max_width = 512;
 
 enum class ShiftDirection { Left, Right, Up, Down };
@@ -16,6 +16,8 @@ class ViewCtx final : public gui::BaseView {
    std::uint16_t _pixels_height = default_height;
    std::uint16_t _pixels_width = default_width;
    std::array<bool, max_width * max_height> _pixels { };
+
+   void bitmap_refit(std::uint16_t prev_width, std::uint16_t prev_height);
 
    public:
    ViewCtx(gui::Context *ctx);
