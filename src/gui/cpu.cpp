@@ -383,15 +383,23 @@ void ViewCtx::show_memory_view(MemoryViewType type, int default_height) {
    }
 
    auto render_memory = [hack_mem, type](std::uint16_t idx) {
-      char input_buf[32 * 1024] = { };
+      char input_buf[16] = { };
 
       switch (curr_view_opt[static_cast<int>(type)]) {
       case MemoryViewOption::Asm: {
          auto inst_opt = assembly::disassemble(hack_mem[idx]);
          auto inst_val = inst_opt.has_value() ? inst_opt.value() : "(invalid asm)";
-         // TODO: make it editable once edited, we automatically assemble it and inject it
-         // to memory
-         ImGui::InputText("%s", inst_val.data(), inst_val.size() + 1);
+         strncpy(input_buf, inst_val.c_str(), inst_val.size());
+         // TODO: find out why wrong input causes program to stall
+         if (ImGui::InputText("%s", input_buf, sizeof(input_buf), ImGuiInputTextFlags_EnterReturnsTrue)) {
+            auto assembled_input_opt = assembly::assemble(input_buf);
+            if (assembled_input_opt.has_value()) {
+               auto assembled_input = assembled_input_opt.value();
+               if (assembled_input.size() == 1) {
+                  hack_mem[idx] = assembled_input.front();
+               }
+            }
+         }
       } break;
 
       case MemoryViewOption::Bin: {
@@ -485,25 +493,30 @@ void ViewCtx::show_hack_registers() {
        ImGuiChildFlags_Borders);
 
    if (ImGui::BeginTable("hack-registers", 3, 0, ImVec2(300, 0))) {
+      ImGuiInputTextFlags input_flags = ImGuiInputTextFlags_EnterReturnsTrue;
+      if (_hack_state == State::Running) {
+         input_flags |= ImGuiInputTextFlags_ReadOnly;
+      }
+
       ImGui::TableNextRow();
       ImGui::TableNextColumn();
       ImGui::AlignTextToFramePadding();
       ImGui::TextUnformatted("A:");
       ImGui::SameLine();
-      ImGui::InputScalar("##A", ImGuiDataType_U16, &_hack.address_reg, nullptr, nullptr, nullptr,
-          ImGuiInputTextFlags_EnterReturnsTrue);
+      ImGui::InputScalar(
+          "##A", ImGuiDataType_U16, &_hack.address_reg, nullptr, nullptr, nullptr, input_flags);
 
       ImGui::TableNextColumn();
       ImGui::TextUnformatted("D:");
       ImGui::SameLine();
-      ImGui::InputScalar("##D", ImGuiDataType_U16, &_hack.data_reg, nullptr, nullptr, nullptr,
-          ImGuiInputTextFlags_EnterReturnsTrue);
+      ImGui::InputScalar(
+          "##D", ImGuiDataType_U16, &_hack.data_reg, nullptr, nullptr, nullptr, input_flags);
 
       ImGui::TableNextColumn();
       ImGui::TextUnformatted("PC:");
       ImGui::SameLine();
-      ImGui::InputScalar("##PC", ImGuiDataType_U16, &_hack.pc, nullptr, nullptr, nullptr,
-          ImGuiInputTextFlags_EnterReturnsTrue);
+      ImGui::InputScalar(
+          "##PC", ImGuiDataType_U16, &_hack.pc, nullptr, nullptr, nullptr, input_flags);
 
       ImGui::EndTable();
    }

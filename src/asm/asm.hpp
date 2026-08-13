@@ -1,6 +1,7 @@
 #include "../base_parser.hpp"
 #include "../report/report.hpp"
 #include <filesystem>
+#include <sstream>
 #include <variant>
 
 namespace assembly {
@@ -135,7 +136,7 @@ class Parser final : public BaseParser<Token, TokenType> {
 };
 
 class Lexer final {
-   std::ifstream m_asm_file;
+   std::istringstream m_asm_file;
    std::vector<Token> m_tokens { };
    std::size_t m_curr_x { 0 }, m_curr_y { 0 };
 
@@ -144,8 +145,8 @@ class Lexer final {
    void ignore_comment();
 
    public:
-   explicit Lexer(const std::filesystem::path filepath)
-       : m_asm_file { filepath } { }
+   explicit Lexer(const std::filesystem::path filepath);
+   explicit Lexer(const std::string_view assembly);
    std::vector<Token> tokenize();
 };
 
@@ -171,6 +172,7 @@ class CodeGen {
 
 std::string to_string(std::vector<std::uint16_t> asm_instructions);
 
+std::optional<std::vector<std::uint16_t>> assemble(std::string_view instructions);
 std::optional<std::string> disassemble(std::uint16_t instruction);
 std::optional<std::string> disassemble(std::string_view instructions);
 }

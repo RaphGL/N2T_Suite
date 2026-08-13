@@ -413,4 +413,23 @@ std::optional<std::vector<std::uint16_t>> CodeGen::compile() {
    return compiled_insts;
 }
 
+// This is only meant for use when error messages don't matter and only whether it failed or not matters.
+// If good error messages are important, going through all the assembling steps and getting the error reports is preferrable.
+std::optional<std::vector<std::uint16_t>> assemble(std::string_view instructions) {
+   Lexer lexer{instructions};
+   auto tokens = lexer.tokenize();
+   if (tokens.empty()) {
+      return std::nullopt;
+   }
+
+   Parser parser{tokens, "<memory>"};
+   auto parsed_insts = parser.parse();
+   if (!parsed_insts.has_value()) {
+      return std::nullopt;
+   }
+
+   CodeGen codegen{parsed_insts.value(), "<memory>"};
+   return codegen.compile();
+}
+
 }; // namespace assembly
