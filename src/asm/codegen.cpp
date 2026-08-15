@@ -14,6 +14,10 @@ CodeGen::CodeGen(std::vector<Instruction> instructions, std::filesystem::path fi
     : m_instructions { instructions }
     , m_reporter { filepath } { }
 
+CodeGen::CodeGen(std::vector<Instruction> instructions, std::string_view contents)
+    : m_instructions { instructions }
+    , m_reporter { contents } { }
+
 std::string CodeGen::get_error_report() { return m_error_report; }
 
 inline void CodeGen::emit_error(
@@ -413,22 +417,24 @@ std::optional<std::vector<std::uint16_t>> CodeGen::compile() {
    return compiled_insts;
 }
 
-// This is only meant for use when error messages don't matter and only whether it failed or not matters.
-// If good error messages are important, going through all the assembling steps and getting the error reports is preferrable.
+// This is only meant for use when error messages don't matter and only whether it failed or not
+// matters. If good error messages are important, going through all the assembling steps and getting
+// the error reports is preferrable.
+// TODO: return the appended report string when error occurs so that users can still have feedback
 std::optional<std::vector<std::uint16_t>> assemble(std::string_view instructions) {
-   Lexer lexer{instructions};
+   Lexer lexer { instructions };
    auto tokens = lexer.tokenize();
    if (tokens.empty()) {
       return std::nullopt;
    }
 
-   Parser parser{tokens, "<memory>"};
+   Parser parser { tokens, std::string_view("<memory>") };
    auto parsed_insts = parser.parse();
    if (!parsed_insts.has_value()) {
       return std::nullopt;
    }
 
-   CodeGen codegen{parsed_insts.value(), "<memory>"};
+   CodeGen codegen { parsed_insts.value(), std::string_view("<memory>") };
    return codegen.compile();
 }
 

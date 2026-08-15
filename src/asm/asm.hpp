@@ -166,6 +166,8 @@ class CodeGen {
 
    public:
    explicit CodeGen(std::vector<Instruction> instructions, std::filesystem::path filepath);
+   explicit CodeGen(std::vector<Instruction> instructions, std::string_view contents);
+
    std::optional<std::vector<std::uint16_t>> compile();
    std::string get_error_report();
 };

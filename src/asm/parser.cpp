@@ -378,6 +378,11 @@ std::optional<CInstr> Parser::parse_cinstr() {
       }
    }
 
+   if (this->eof()) {
+      this->emit_error(Token{}, "Assembly ends with incomplete statement");
+      return std::nullopt;
+   }
+
    auto comp = this->parse_comp();
    if (comp.has_value()) {
       cinstr.comp = comp.value();

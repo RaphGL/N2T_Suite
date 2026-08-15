@@ -2,15 +2,29 @@
 #include <algorithm>
 #include <filesystem>
 #include <format>
-#include <fstream>
 #include <optional>
+#include <sstream>
 #include <vector>
 
 namespace report {
 
 Context::Context(const std::filesystem::path filepath)
-    : m_file { filepath }
-    , m_filepath { filepath } { }
+    : m_filepath { filepath }
+    , m_contents { filepath } {
+   if (!std::filesystem::exists(filepath)) {
+      // TODO check appropriate exception to throw
+      throw "The assembly file path does not exist";
+   }
+
+   std::ifstream file { filepath };
+   std::stringstream ss;
+   ss << file.rdbuf();
+   m_stream.str(ss.str());
+}
+
+Context::Context(std::string_view contents)
+    : m_stream { std::string(contents) }
+    , m_contents { contents } { }
 
 void Context::create_report(ReportType type, Coord start, Coord end, std::string_view error_msg) {
    Report rep {
@@ -93,9 +107,9 @@ std::optional<std::string> Context::generate_final_report() {
 
    std::string current_line { };
    std::size_t curr_row { 0 }, curr_col { 0 }, curr_report { 0 };
-   while (!m_file.eof() && curr_report < m_reports.size()) {
-      current_line = "";
-      std::getline(m_file, current_line);
+   while (!m_stream.eof() && curr_report < m_reports.size()) {
+      current_line.clear();
+      std::getline(m_stream, current_line);
       curr_col = 0;
 
       for (auto _ : current_line) {

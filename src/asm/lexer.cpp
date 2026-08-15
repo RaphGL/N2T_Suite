@@ -8,21 +8,20 @@
 namespace assembly {
 
 Lexer::Lexer(const std::filesystem::path filepath)
-: m_asm_file{}
-     {
-        if (!std::filesystem::exists(filepath)) {
-           // TODO check appropriate exception to throw
-           throw "The assembly file path does not exist";
-        }
+    : m_asm_file { } {
+   if (!std::filesystem::exists(filepath)) {
+      // TODO check appropriate exception to throw
+      throw "The assembly file path does not exist";
+   }
 
-        std::ifstream asm_input {filepath};
-        std::stringstream ss;
-        ss << asm_input.rdbuf();
-        m_asm_file.str(ss.str());
-    }
+   std::ifstream asm_input { filepath };
+   std::stringstream ss;
+   ss << asm_input.rdbuf();
+   m_asm_file.str(ss.str());
+}
 
 Lexer::Lexer(const std::string_view assembly) {
-   std::string asm_copy {assembly};
+   std::string asm_copy { assembly };
    m_asm_file = std::istringstream(std::move(asm_copy));
 }
 

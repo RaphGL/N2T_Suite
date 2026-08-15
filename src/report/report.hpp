@@ -3,6 +3,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <variant>
 #include <optional>
 #include <vector>
 
@@ -36,12 +37,14 @@ struct Report {
 };
 
 class Context final {
-   std::ifstream m_file;
    std::vector<Report> m_reports;
    std::filesystem::path m_filepath;
+   std::istringstream m_stream;
+   std::variant<std::filesystem::path, std::string_view> m_contents;
 
    public:
    explicit Context(const std::filesystem::path filepath);
+   explicit Context(std::string_view contents);
    void create_report(ReportType type, Coord start, Coord end, std::string_view error_msg);
 
    std::optional<std::string> generate_final_report();
